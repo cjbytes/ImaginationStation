@@ -1,0 +1,120 @@
+<Page
+    x:Class="OllamaHub.Views.ChainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <Grid Background="{StaticResource Surface0Brush}" Padding="32">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,24">
+            <StackPanel Orientation="Horizontal" Spacing="16">
+                <TextBlock Text="🔗 Chain Builder" Style="{StaticResource HeaderText}" VerticalAlignment="Center"/>
+                <Button Content="💾 Save Chain" 
+                        Style="{StaticResource AccentButtonStyle}"
+                        Click="SaveChain_Click"/>
+                <Button Content="▶️ Execute" 
+                        Style="{StaticResource ModernButtonStyle}"
+                        Click="ExecuteChain_Click"/>
+            </StackPanel>
+            <TextBlock Text="Build multi-step AI workflows by chaining prompts together" 
+                       Style="{StaticResource BodyText}"
+                       Margin="0,8,0,0"/>
+        </StackPanel>
+        
+        <!-- Saved Chains List -->
+        <Border Grid.Row="1" Grid.Column="0" 
+                Style="{StaticResource CardStyle}"
+                Margin="0,0,12,0">
+            <StackPanel Spacing="12">
+                <TextBlock Text="Saved Chains" Style="{StaticResource TitleText}"/>
+                <ListBox x:Name="ChainsList" 
+                         SelectionMode="Single"
+                         Background="Transparent"
+                         BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{StaticResource Surface3Brush}"
+                                    CornerRadius="6"
+                                    Padding="12"
+                                    Margin="0,4">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="{Binding Name}" 
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="{Binding Description}" 
+                                               FontSize="11"
+                                               Foreground="{StaticResource TextTertiaryBrush}"
+                                               TextWrapping="Wrap"/>
+                                    <TextBlock FontSize="10" 
+                                               Foreground="{StaticResource TextTertiaryBrush}">
+                                        <Run Text="{Binding Steps.Count}"/>
+                                        <Run Text=" steps"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </StackPanel>
+        </Border>
+        
+        <!-- Chain Builder Canvas -->
+        <Border Grid.Row="1" Grid.Column="1" 
+                Style="{StaticResource CardStyle}"
+                Margin="12,0,0,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="ChainSteps" Spacing="16">
+                    <TextBlock Text="Chain Steps (Drag to reorder)" 
+                               Style="{StaticResource TitleText}"/>
+                    
+                    <!-- Dynamic chain steps will be added here -->
+                    <Button Content="➕ Add Step" 
+                            Style="{StaticResource ModernButtonStyle}"
+                            HorizontalAlignment="Left"
+                            Click="AddStep_Click"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+        
+        <!-- Input/Output Panel -->
+        <Border Grid.Row="2" Grid.ColumnSpan="2" 
+                Style="{StaticResource CardStyle}"
+                Margin="0,16,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel Grid.Column="0" Spacing="8" Margin="0,0,12,0">
+                    <TextBlock Text="Initial Input" Style="{StaticResource TitleText}"/>
+                    <TextBox x:Name="ChainInput"
+                             PlaceholderText="Enter starting text for the chain..."
+                             Height="100"
+                             TextWrapping="Wrap"
+                             AcceptsReturn="True"/>
+                </StackPanel>
+                
+                <StackPanel Grid.Column="1" Spacing="8" Margin="12,0,0,0">
+                    <TextBlock Text="Final Output" Style="{StaticResource TitleText}"/>
+                    <TextBox x:Name="ChainOutput"
+                             IsReadOnly="True"
+                             Height="100"
+                             TextWrapping="Wrap"
+                             AcceptsReturn="True"
+                             Foreground="{StaticResource TextSecondaryBrush}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Page>

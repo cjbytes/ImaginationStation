@@ -1,0 +1,939 @@
+This guide provides a quick start for running different profiles of PrivateGPT using Docker Compose.
+The profiles cater to various environments, including Ollama setups (CPU, CUDA, MacOS), and a fully local setup.
+
+By default, Docker Compose will download pre-built images from a remote registry when starting the services. However, you have the option to build the images locally if needed. Details on building Docker image locally are provided at the end of this guide.
+
+If you want to run PrivateGPT locally without Docker, refer to the [Local Installation Guide](/installation).
+
+## Prerequisites
+- **Docker and Docker Compose:** Ensure both are installed on your system.
+  [Installation Guide for Docker](https://docs.docker.com/get-docker/), [Installation Guide for Docker Compose](https://docs.docker.com/compose/install/).
+- **Clone PrivateGPT Repository:** Clone the PrivateGPT repository to your machine and navigate to the directory:
+  ```sh
+  git clone https://github.com/zylon-ai/private-gpt.git
+  cd private-gpt
+  ```
+
+## Setups
+
+### Ollama Setups (Recommended)
+
+#### 1. Default/Ollama CPU
+
+**Description:**
+This profile runs the Ollama service using CPU resources. It is the standard configuration for running Ollama-based Private-GPT services without GPU acceleration.
+
+**Run:**
+To start the services using pre-built images, run:
+```sh
+docker-compose up
+```
+or with a specific profile:
+```sh
+docker-compose --profile ollama-cpu up
+```
+
+#### 2. Ollama Nvidia CUDA
+
+**Description:**
+This profile leverages GPU acceleration with CUDA support, suitable for computationally intensive tasks that benefit from GPU resources.
+
+**Requirements:**
+Ensure that your system has compatible GPU hardware and the necessary NVIDIA drivers installed. The installation process is detailed [here](https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html).
+
+**Run:**
+To start the services with CUDA support using pre-built images, run:
+```sh
+docker-compose --profile ollama-cuda up
+```
+
+#### 3. Ollama External API
+
+**Description:**
+This profile is designed for running PrivateGPT using Ollama installed on the host machine. This setup is particularly useful for MacOS users, as Docker does not yet support Metal GPU.
+
+**Requirements:**
+Install Ollama on your machine by following the instructions at [ollama.ai](https://ollama.ai/).
+
+**Run:**
+To start the Ollama service, use:
+```sh
+OLLAMA_HOST=0.0.0.0 ollama serve
+```
+To start the services with the host configuration using pre-built images, run:
+```sh
+docker-compose --profile ollama-api up
+```
+
+### Fully Local Setups
+
+#### 1. LlamaCPP CPU
+
+**Description:**
+This profile runs the Private-GPT services locally using `llama-cpp` and Hugging Face models.
+
+**Requirements:**
+A **Hugging Face Token (HF_TOKEN)** is required for accessing Hugging Face models. Obtain your token following [this guide](/installation/getting-started/troubleshooting#downloading-gated-and-private-models).
+
+**Run:**
+Start the services with your Hugging Face token using pre-built images:
+```sh
+HF_TOKEN=<your_hf_token> docker-compose --profile llamacpp-cpu up
+```
+Replace `<your_hf_token>` with your actual Hugging Face token.
+
+## Building Locally
+
+If you prefer to build Docker images locally, which is useful when making changes to the codebase or the Dockerfiles, follow these steps:
+
+### Building Locally
+To build the Docker images locally, navigate to the cloned repository directory and run:
+```sh
+docker-compose build
+```
+This command compiles the necessary Docker images based on the current codebase and Dockerfile configurations.
+
+### Forcing a Rebuild with --build
+If you have made changes and need to ensure these changes are reflected in the Docker images, you can force a rebuild before starting the services:
+```sh
+docker-compose up --build
+```
+or with a specific profile:
+```sh
+docker-compose --profile <profile_name> up --build
+```
+Replace `<profile_name>` with the desired profile.
+Overview
+
+This tutorial shows you how to build and deploy an intelligent data analysis agent using Cloud API Registry with ADK and Vertex AI Agent Engine.
+
+You'll create an agent that can interact with BigQuery datasets through standardized MCP tools, allowing it to discover datasets, examine table schemas, and execute SQL queries—all through natural language conversations.
+What you'll learn
+
+    How to discover and list available MCP servers and tools using Cloud API Registry
+    How to enable BigQuery MCP server tools for your project
+    How to build an agent using the Google Agent Development Kit (ADK) with Tool Registry
+    How to test your agent locally before deployment
+    How to deploy your agent to Vertex AI Agent Engine
+
+What you'll build
+
+A data analyst agent that can:
+
+    List BigQuery datasets in your project
+    Retrieve table schemas and metadata
+    Execute SQL queries against public datasets
+    Provide natural language insights about your data
+
+Prerequisites
+
+    A Google Cloud project with billing enabled
+    Basic familiarity with Python and BigQuery (helpful but not required)
+
+Get started
+Install required packages
+
+Note: This installation will take a few moments. After it completes, you may see a message prompting you to restart the runtime. This is expected behavior—please click the "Restart Runtime" button when prompted.
+
+# Install Vertex AI SDK with Agent Engine and ADK support
+%pip install "google-cloud-aiplatform[agent_engines,adk]>=1.101.0" --quiet
+     
+Authenticate your notebook environment (Colab only)
+
+If you're running this notebook in Google Colab, run the cell below to authenticate your Google Cloud account. This allows the notebook to access your Cloud resources.
+
+import sys
+
+if "google.colab" in sys.modules:
+    from google.colab import auth
+
+    auth.authenticate_user()
+    print("✅ Authentication successful!")
+     
+Set Google Cloud project information
+
+To use Vertex AI and Cloud API Registry, you need to specify your Google Cloud project details. Replace the placeholder values below with your actual project ID and preferred location.
+
+We'll also create a Cloud Storage bucket to store artifacts during agent deployment.
+
+import os
+
+import vertexai
+
+# Replace with your project information
+# fmt: off
+PROJECT_ID = "[your-project-id]"  # @param {type: "string", placeholder: "[your-project-id]", isTemplate: true}
+# fmt: on
+
+# Use environment variable if not explicitly set
+if not PROJECT_ID or PROJECT_ID == "[your-project-id]":
+    PROJECT_ID = str(os.environ.get("GOOGLE_CLOUD_PROJECT"))
+
+# Set location (use us-central1 for best availability)
+LOCATION = os.environ.get("GOOGLE_CLOUD_REGION", "us-central1")
+
+# Create a unique bucket name for this tutorial
+import uuid
+
+BUCKET_NAME = f"{PROJECT_ID}-tool-registry-{uuid.uuid4().hex[:8]}"
+BUCKET_URI = f"gs://{BUCKET_NAME}"
+
+print(f"📋 Project ID: {PROJECT_ID}")
+print(f"📍 Location: {LOCATION}")
+print(f"🪣 Bucket: {BUCKET_URI}")
+     
+Create Cloud Storage bucket
+
+This bucket will store temporary files during agent deployment.
+
+# Create the bucket
+!gsutil mb -l {LOCATION} -p {PROJECT_ID} {BUCKET_URI}
+print("\n✅ Bucket created successfully!")
+     
+Enable required Google Cloud APIs
+
+Why we need these APIs:
+
+    apihub.googleapis.com: Provides access to API Hub for discovering MCP servers
+    cloudapiregistry.googleapis.com: The Cloud API Registry service that manages MCP tools
+    aiplatform.googleapis.com: Vertex AI for deploying and running agents
+
+Note: This command may take 1-2 minutes to complete. This is normal.
+
+# Enable the required APIs
+!gcloud services enable apihub.googleapis.com cloudapiregistry.googleapis.com aiplatform.googleapis.com --project={PROJECT_ID}
+print("\n✅ All required APIs enabled successfully!")
+     
+Initialize Vertex AI SDK and ADK
+
+Now we'll initialize the Vertex AI SDK and set environment variables required by the Agent Development Kit (ADK).
+
+# Set ADK environment variables
+os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "TRUE"
+os.environ["GOOGLE_CLOUD_PROJECT"] = PROJECT_ID
+os.environ["GOOGLE_CLOUD_LOCATION"] = LOCATION
+
+# Initialize Vertex AI SDK
+vertexai.init(project=PROJECT_ID, location=LOCATION, staging_bucket=BUCKET_URI)
+
+print("✅ Vertex AI and ADK initialized successfully!")
+     
+Discover MCP Tools with Cloud API Registry
+
+Cloud API Registry acts as a centralized catalog of MCP (Model Context Protocol) servers. Each MCP server exposes a set of tools that agents can use to perform specific tasks.
+
+In this section, you'll:
+
+    List all available MCP servers (both enabled and disabled)
+    Filter for the BigQuery MCP server
+    Examine what tools the BigQuery server provides
+
+Let's start by discovering what MCP servers are available in the registry.
+List all available MCP servers
+
+The --all flag shows both enabled and disabled servers. Without it, you'd only see servers you've already enabled for your project.
+
+# List all MCP servers available in the registry
+!gcloud beta api-registry mcp servers list --all --project={PROJECT_ID}
+     
+Find the BigQuery MCP server
+
+Now let's filter specifically for the BigQuery server by its URL. This shows us the server's status (enabled/disabled) and endpoint information.
+
+# Filter for BigQuery MCP server
+!gcloud beta api-registry mcp servers list --all \
+    --filter='urls="bigquery.googleapis.com/mcp"' \
+    --project={PROJECT_ID}
+
+print("💡 Note: If the state shows 'DISABLED', we'll enable it in the next section.")
+     
+List available BigQuery MCP tools
+
+Each MCP server provides specific tools. Let's see what capabilities the BigQuery server offers.
+
+Note: This command lists tools even if the server isn't enabled yet. We're just exploring what's available.
+
+# List all tools provided by the BigQuery MCP server
+!gcloud beta api-registry mcp tools list --all \
+    --filter='mcpServerUrls="bigquery.googleapis.com/mcp"' \
+    --project={PROJECT_ID}
+     
+Understanding BigQuery MCP Tools
+
+The BigQuery MCP server provides five powerful tools for working with your data:
+Tool Name 	Description 	Use Case
+list_dataset_ids 	Lists all dataset IDs in a project 	Discovering what datasets are available
+get_dataset_info 	Retrieves metadata about a specific dataset 	Understanding dataset properties and settings
+list_table_ids 	Lists all table IDs within a dataset 	Exploring what tables exist in a dataset
+get_table_info 	Retrieves schema and metadata for a table 	Examining column names, types, and structure
+execute_sql 	Runs a SQL query and returns results 	Analyzing data with SELECT statements
+
+Important notes about execute_sql:
+
+    ✅ Only SELECT statements are allowed
+    ❌ INSERT, UPDATE, DELETE, and stored procedures are blocked
+    All queries are automatically labeled with goog-mcp-server: true for tracking
+
+Enable BigQuery MCP Server
+
+Before we can use the BigQuery tools in our agent, we need to enable the MCP server for our project. This grants our project permission to use the server's tools.
+
+What happens when you enable a server:
+
+    The server becomes available for agents in your project
+    Your project's agents can call the server's tools
+    The tools use your project's credentials and quotas
+
+
+# Enable the BigQuery MCP server
+!gcloud beta api-registry mcp enable bigquery.googleapis.com --project={PROJECT_ID}
+
+print("\n✅ BigQuery MCP server enabled successfully!")
+print("\nYour agents can now use BigQuery tools to:")
+print("  • List and explore datasets")
+print("  • Examine table schemas")
+print("  • Execute SQL queries")
+     
+Verify the server is enabled
+
+Let's confirm the BigQuery server now shows as ENABLED in our project.
+
+# List only enabled servers (should now include BigQuery)
+!gcloud beta api-registry mcp servers list --project={PROJECT_ID}
+
+print("\n✅ The BigQuery server should now appear with state: ENABLED")
+     
+Import required libraries
+
+Now we'll import the libraries needed to build our agent:
+
+    ApiRegistry: Connects to Cloud API Registry and retrieves MCP toolsets
+    LlmAgent: The core agent class from ADK
+    Runner: Allows us to test the agent locally
+    InMemorySessionService: Manages conversation history during local testing
+
+
+import os
+import uuid
+from collections.abc import Iterator
+from typing import Any
+
+from google.adk.agents import LlmAgent
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.adk.tools.api_registry import ApiRegistry
+from google.genai import types
+from vertexai import agent_engines
+from vertexai.agent_engines import AgentEngine
+from vertexai.preview.reasoning_engines import AdkApp
+
+print("✅ Libraries imported successfully!")
+     
+Build the Agent with Tool Registry
+
+Now comes the exciting part—building our data analyst agent!
+
+How this works:
+
+    ApiRegistry connects to Cloud API Registry using your project ID
+    We call get_toolset() to retrieve the BigQuery MCP tools
+    We create an LlmAgent and equip it with these tools
+    The agent can now use natural language to decide when and how to use each tool
+
+Grant IAM permissions for MCP Tool User role
+
+This allows your user account to call MCP tools through the API Registry
+
+user_email = !gcloud config get-value account
+member = f"user:{user_email[0]}"
+
+!gcloud projects add-iam-policy-binding {PROJECT_ID} --member={member} --role="roles/mcp.toolUser" --quiet --condition=None
+print("\n✅ IAM permissions granted!")
+     
+Initialize the Tool Registry
+
+The ApiRegistry class authenticates with your Google Cloud project and fetches the list of enabled MCP servers.
+
+# Header required for BigQuery MCP server
+header_provider = lambda context: {
+    "x-goog-user-project": PROJECT_ID,
+}
+
+# Initialize the API Registry with your project
+tool_registry = ApiRegistry(PROJECT_ID, header_provider=header_provider)
+
+print("✅ Tool Registry initialized successfully!")
+     
+Get the BigQuery toolset
+
+Now we'll retrieve all the BigQuery tools. We could filter for specific tools using tool_filter, but we'll include all of them for maximum capability.
+
+Behind the scenes: This creates an authenticated connection to the BigQuery MCP server with proper headers and permissions.
+
+# Get the BigQuery MCP toolset
+# Note: The server name follows the pattern "projects/{PROJECT_ID}/locations/global/mcpServers/{service}"
+registry_tools = tool_registry.get_toolset(
+    mcp_server_name=f"projects/{PROJECT_ID}/locations/global/mcpServers/google-bigquery.googleapis.com-mcp",
+    # Optional: filter for specific tools only
+    # tool_filter=["list_dataset_ids", "execute_sql"]
+)
+
+print("✅ BigQuery toolset retrieved successfully!")
+print("\nThe agent now has access to all BigQuery MCP tools.")
+     
+Create the agent
+
+Finally, we create our agent with:
+
+    Model: Gemini 2.0 Flash for fast, intelligent responses
+    Name: A descriptive identifier
+    Instruction: A clear directive that shapes the agent's behavior
+    Tools: The BigQuery toolset we just retrieved
+
+The instruction is crucial - it tells the agent how to behave and when to use its tools.
+
+# Create the LlmAgent with BigQuery tools
+data_analyst_agent = LlmAgent(
+    model="gemini-2.5-flash",
+    name="bigquery_data_analyst",
+    instruction=f"""
+    You are a helpful data analyst assistant with access to BigQuery.
+
+    The project ID is: {PROJECT_ID}
+
+    When users ask about data:
+    - Use the project ID {PROJECT_ID} when calling BigQuery tools
+    - First, explore available datasets and tables to understand what data exists
+    - Check table schemas to understand the structure before querying
+    - Write clear, efficient SQL queries to answer their questions
+    - Explain your findings in simple, non-technical language
+
+    Always use the BigQuery tools to fetch real data rather than making assumptions.
+    For all BigQuery operations, use project_id: {PROJECT_ID}
+    """,
+    tools=[registry_tools],
+)
+
+print("✅ Data analyst agent created successfully!")
+print("\n🤖 Agent capabilities:")
+print("  • Natural language understanding")
+print("  • BigQuery dataset exploration")
+print("  • Schema inspection")
+print("  • SQL query generation and execution")
+     
+Test the Agent Locally
+
+Before deploying to the cloud, it's important to test locally. This allows for faster iteration and easier debugging.
+
+How local testing works:
+
+    InMemorySessionService: Stores conversation history in memory (no cloud storage needed)
+    Runner: Orchestrates the conversation between you and the agent
+    Interactive loop: You can chat with the agent to verify it works correctly
+
+Let's set up the local testing environment.
+Create the interactive chat helper
+
+This helper function provides a consistent chat interface that works with both local and deployed agents. It handles:
+
+    Session management
+    Streaming responses
+    User input
+    Graceful exit
+
+
+def chat_loop(app, user_id: str | None = None, session_id: str | None = None) -> None:
+    """Interactive chat loop for testing agents.
+
+    Args:
+        app: Either a Runner (local) or AdkApp/AgentEngine (deployed)
+        user_id: Optional user identifier
+        session_id: Optional session identifier
+    """
+    # Generate unique IDs if not provided
+    user_id = user_id or f"user_{uuid.uuid4().hex[:8]}"
+
+    # Handle session creation based on app type
+    if isinstance(app, (AdkApp, AgentEngine)):
+        # For deployed agents, create a remote session
+        if not session_id:
+            session = app.create_session(user_id=user_id)
+            session_id = session["id"] if isinstance(session, dict) else session.id
+
+        def query_fn(msg: str):
+            return app.stream_query(user_id=user_id, session_id=session_id, message=msg)
+
+    elif isinstance(app, Runner):
+        # For local agents, use in-memory session
+        session_id = session_id or f"session_{uuid.uuid4().hex[:8]}"
+
+        def query_fn(msg: str):
+            return app.run(
+                user_id=user_id,
+                session_id=session_id,
+                new_message=types.Content(role="user", parts=[types.Part(text=msg)]),
+            )
+
+    else:
+        raise TypeError(f"Unsupported app type: {type(app)}")
+
+    # Print session info
+    print("\n🚀 Starting chat session...")
+    print(f"👤 User ID: {user_id}")
+    print(f"📁 Session ID: {session_id}")
+    print("💬 Type 'exit' or 'quit' to end the session.")
+    print("-" * 60)
+
+    # Main chat loop
+    while True:
+        try:
+            user_input = input("\nYou: ").strip()
+            if not user_input or user_input.lower() in {"quit", "exit", "bye"}:
+                break
+
+            print("\nAssistant: ", end="", flush=True)
+
+            # Stream and collect response (don't print again since _get_response_text already prints)
+            _get_response_text(query_fn(user_input))
+            print()  # Add newline after response
+
+        except (KeyboardInterrupt, EOFError):
+            print("\n\n🛑 Chat interrupted.")
+            break
+        except Exception as e:
+            print(f"\n❌ Error: {e}")
+            import traceback
+
+            traceback.print_exc()
+            continue
+
+    print("\n👋 Goodbye!")
+
+
+def _get_response_text(events: Iterator[Any]) -> None:
+    """Extract and stream response text from events."""
+    for event in events:
+        # Handle different event formats
+        if isinstance(event, dict):
+            text = _extract_from_dict_event(event)
+        else:
+            text = _extract_from_object_event(event)
+
+        if text:
+            print(text, end="", flush=True)  # Stream to console
+
+
+def _extract_from_dict_event(event: dict) -> str | None:
+    """Extract text from dictionary-style events."""
+    # Skip function calls, only extract model text responses
+    content = event.get("content", {})
+    if not content:
+        return None
+    if content.get("role") == "model":
+        parts = content.get("parts", [])
+        text_parts = []
+        for part in parts:
+            if isinstance(part, dict) and "text" in part:
+                text_parts.append(part["text"])
+        return "".join(text_parts) if text_parts else None
+    return None
+
+
+def _extract_from_object_event(event: Any) -> str | None:
+    """Extract text from object-style events."""
+    content = getattr(event, "content", None)
+    if isinstance(content, str):
+        return content
+
+    if content and hasattr(content, "parts"):
+        text_parts = []
+        for part in content.parts:
+            if hasattr(part, "text") and part.text:
+                text_parts.append(part.text)
+        return "".join(text_parts) if text_parts else None
+
+    return getattr(event, "text", None)
+
+
+print("✅ Chat helper function defined!")
+     
+Initialize the local runner
+
+The Runner manages the conversation flow between you and the agent, handling session state and message history.
+
+# Create an in-memory session service for local testing
+session_service = InMemorySessionService()
+
+# Initialize the Runner with our agent
+runner = Runner(
+    agent=data_analyst_agent,
+    app_name="BigQueryDataAnalyst",
+    session_service=session_service,
+)
+
+print("✅ Local runner initialized successfully!")
+print("\nYou're ready to test the agent locally.")
+     
+Chat with your agent locally
+
+Now let's test the agent! Try asking questions like:
+
+Example prompts:
+
+    "What datasets are available in my project?"
+    "Show me the tables in the bigquery-public-data.usa_names dataset"
+    "What's the schema of the usa_1910_current table?"
+    "Show me the top 10 most popular baby names in 2020"
+
+What to observe:
+
+    The agent will use the BigQuery tools automatically
+    You'll see it make decisions about which tools to call
+    It will explain its findings in natural language
+
+Type 'exit' when you're done testing.
+
+async def test_agent_locally():
+    """Test the agent locally with proper session creation."""
+    # Create an in-memory session service for local testing
+    session_service = InMemorySessionService()
+
+    # Create a user ID
+    user_id = f"user_{uuid.uuid4().hex[:8]}"
+
+    # Create a session for this user
+    session = await session_service.create_session(
+        app_name="BigQueryDataAnalyst", user_id=user_id
+    )
+
+    # Initialize the Runner with our agent
+    runner = Runner(
+        agent=data_analyst_agent,
+        app_name="BigQueryDataAnalyst",
+        session_service=session_service,
+    )
+
+    print("✅ Local runner initialized successfully!")
+    print("\nYou're ready to test the agent locally.")
+
+    # Start the interactive chat session with the created session
+    chat_loop(runner, user_id=user_id, session_id=session.id)
+
+
+# Run the async test function
+await test_agent_locally()
+     
+Deploy to Vertex AI Agent Engine
+
+Now that we've verified the agent works locally, let's deploy it to the cloud! This makes it:
+
+    Accessible via API
+    Scalable and production-ready
+    Shareable with your team
+
+Deployment process:
+
+    Create a Python module file with the agent definition
+    Use agent_engines.create() to deploy
+    Agent Engine builds a container with your agent
+    The agent becomes available as a managed service
+
+Create the agent module file
+
+Why we need this: The Tool Registry's ApiRegistry class contains non-serializable state, so we can't pickle the agent directly. Instead, we define it in a Python module that Agent Engine will import.
+
+What this file does:
+
+    Imports all necessary libraries
+    Reads configuration from environment variables
+    Defines a VertexAiSessionService builder for cloud-based sessions
+    Wraps the agent in an AdkApp for deployment
+
+
+# Create the root_agent.py module file
+root_agent_file = f"""
+import os
+from google.adk.agents import LlmAgent
+from google.adk.tools.api_registry import ApiRegistry
+from vertexai.preview.reasoning_engines import AdkApp
+
+# Read configuration from environment variables
+# (These are set during deployment)
+PROJECT_ID = os.getenv('PROJECT_ID', '{PROJECT_ID}')
+LOCATION = os.getenv('LOCATION', '{LOCATION}')
+
+def session_service_builder():
+    '''Create a Vertex AI session service for cloud deployment.'''
+    from google.adk.sessions import VertexAiSessionService
+    return VertexAiSessionService(project=PROJECT_ID, location=LOCATION)
+
+# Initialize Tool Registry and get BigQuery toolset
+header_provider = lambda context: {{
+    "x-goog-user-project": PROJECT_ID,
+}}
+
+# Initialize the API Registry with your project
+tool_registry = ApiRegistry(PROJECT_ID, header_provider=header_provider)
+registry_tools = tool_registry.get_toolset(
+    mcp_server_name=f"projects/{{PROJECT_ID}}/locations/global/mcpServers/google-bigquery.googleapis.com-mcp",
+)
+
+# Create the agent app
+agent_app = AdkApp(
+    agent=LlmAgent(
+        model='gemini-2.5-flash',
+        name='bigquery_data_analyst',
+        instruction=f'''You are a helpful data analyst assistant with access to BigQuery.
+
+    The project ID is: {{PROJECT_ID}}
+
+    When users ask about data:
+    - Use the project ID {{PROJECT_ID}} when calling BigQuery tools
+    - First, explore available datasets and tables to understand what data exists
+    - Check table schemas to understand the structure before querying
+    - Write clear, efficient SQL queries to answer their questions
+    - Explain your findings in simple, non-technical language
+
+    Always use the BigQuery tools to fetch real data rather than making assumptions.
+    For all BigQuery operations, use project_id: {{PROJECT_ID}}
+    ''',
+        tools=[registry_tools],
+    ),
+    session_service_builder=session_service_builder
+)
+"""
+
+# Write the file
+with open("root_agent.py", "w") as f:
+    f.write(root_agent_file)
+
+print("✅ Agent module file created: root_agent.py")
+print("\nThis file will be uploaded to Agent Engine during deployment.")
+     
+Deploy to Agent Engine
+
+Now we'll deploy the agent using agent_engines.create(). This process:
+
+    Uploads your agent module
+    Builds a Docker container with all dependencies
+    Deploys the container to a managed endpoint
+    Makes the agent available via API
+
+Note: This deployment typically takes 10-15 minutes. The progress will be displayed below.
+
+What each parameter does:
+
+    display_name: Human-readable name shown in the console
+    agent_engine: Specifies which module and variable contains your agent
+    requirements: Python packages to install in the container
+    extra_packages: Local files to include (your agent module)
+    env_vars: Environment variables available to your agent code
+
+Grant IAM permissions to the Vertex AI Agent Engine Service account
+
+This allows your Agent Engine account to call MCP tools through the API Registry
+
+# Get project number for Agent Engine service account
+project_number = !gcloud projects describe {PROJECT_ID} --format="value(projectNumber)"
+agent_engine_sa = (
+    f"service-{project_number[0]}@gcp-sa-aiplatform-re.iam.gserviceaccount.com"
+)
+
+# Grant to Agent Engine service account
+!gcloud projects add-iam-policy-binding {PROJECT_ID} --member=serviceAccount:{agent_engine_sa} --role="roles/cloudapiregistry.viewer" --quiet --condition=None
+!gcloud projects add-iam-policy-binding {PROJECT_ID} --member=serviceAccount:{agent_engine_sa} --role="roles/mcp.toolUser" --quiet  --condition=None
+!gcloud projects add-iam-policy-binding {PROJECT_ID} --member=serviceAccount:{agent_engine_sa} --role="roles/bigquery.user" --quiet --condition=None
+!gcloud projects add-iam-policy-binding {PROJECT_ID} --member=serviceAccount:{agent_engine_sa} --role="roles/bigquery.dataViewer" --quiet --condition=None
+
+print("\n✅ MCP Tool User role granted to Agent Engine service account!")
+print("\n💡 The deployed agent can now access MCP tools from API Registry")
+     
+Create the startup script
+
+Why we need this: When deploying to Agent Engine, the BigQuery MCP server must be enabled in API Registry before the agent can use it. This script will run automatically during the build process to ensure the server is properly enabled.
+
+This setup step is crucial because Agent Engine runs in an isolated environment that needs explicit configuration of which MCP servers it can access.
+
+# # Create startup_scripts directory if it doesn't exist
+os.makedirs("startup_scripts", exist_ok=True)
+
+startup_script = f"""#!/bin/bash
+# installation_scripts/setup_api_registry.sh
+# This script enables the BigQuery MCP server in API Registry
+
+set -e  # Exit on error
+
+echo "🔧 Start checking API Registry setup..."
+
+# Get the project ID from environment variable
+PROJECT_ID="{PROJECT_ID}"
+
+if [ -z "❌📋PROJECT_ID"
+
+# Install gcloud CLI if not already installed
+if ! command -v gcloud &> /dev/null; then
+    echo ""
+    echo "📥 Installing Google Cloud SDK..."
+
+    # Update package list and install dependencies
+    apt-get update -qq
+    apt-get install -y -qq curl apt-transport-https ca-certificates gnupg
+
+    # Add Google Cloud SDK repository
+    echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+
+    # Import Google Cloud public key
+    curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+
+    # Install gcloud CLI
+    apt-get update -qq
+    apt-get install -y -qq google-cloud-sdk google-cloud-sdk-gke-gcloud-auth-plugin
+
+    echo "✅ Google Cloud SDK installed successfully!"
+else
+    echo "✅ Google Cloud SDK already installed"
+fi
+
+# Verify the server is enabled
+echo ""
+echo "🔍 Verifying server status..."
+gcloud beta api-registry mcp servers list --project="$PROJECT_ID"
+
+echo ""
+echo "✅ API Registry setup complete!"
+"""
+
+# Write the script
+with open("startup_scripts/check_api_registry.sh", "w") as f:
+    f.write(startup_script)
+
+# Make it executable
+!chmod +x startup_scripts/check_api_registry.sh
+
+print("✅ Installation script created: startup_scripts/check_api_registry.sh")
+print("\n📦 This script will be included in the deployment package")
+print("🚀 It will run automatically during the Agent Engine build process")
+     
+Deploy the agent
+
+Now you are ready to deploy the agent.
+
+print("🚀 Starting deployment to Vertex AI Agent Engine...")
+print("⏱️  This will take approximately 10-15 minutes.")
+print("\n" + "=" * 60)
+
+# Deploy the agent
+remote_app = agent_engines.create(
+    display_name="bigquery-data-analyst",
+    description="A data analyst agent with BigQuery access via Tool Registry",
+    agent_engine=agent_engines.ModuleAgent(
+        module_name="root_agent",  # The filename (without .py)
+        agent_name="agent_app",  # The variable name in the module
+        register_operations={
+            "": ["get_session", "list_sessions", "create_session", "delete_session"],
+            "async": [
+                "async_get_session",
+                "async_list_sessions",
+                "async_create_session",
+                "async_delete_session",
+            ],
+            "stream": ["stream_query", "streaming_agent_run_with_events"],
+            "async_stream": ["async_stream_query"],
+        },
+    ),
+    requirements=[
+        "google-cloud-aiplatform[agent_engines,adk]>=1.101.0",
+    ],
+    extra_packages=[
+        "root_agent.py",
+        "startup_scripts/check_api_registry.sh",
+    ],
+    env_vars={
+        "PROJECT_ID": PROJECT_ID,
+        "LOCATION": LOCATION,
+    },
+)
+
+print("\n" + "=" * 60)
+print("✅ Deployment successful!")
+print("\n🎉 Your agent is now running in the cloud!")
+print(
+    f"\n📊 View in console: https://console.cloud.google.com/vertex-ai/agents?project={PROJECT_ID}"
+)
+     
+Test the Deployed Agent
+
+Your agent is now deployed and running in the cloud! Let's test it to ensure it works correctly.
+
+What's different from local testing:
+
+    Sessions are stored in Vertex AI (persist across runs)
+    The agent runs on managed infrastructure
+    You're accessing it via API calls
+
+Try the same prompts you used locally:
+
+    "What datasets are available?"
+    "Show me tables in bigquery-public-data.usa_names"
+    "What are the top 10 baby names from 2020?"
+
+Type 'exit' when you're done testing.
+
+# Start an interactive chat session with the deployed agent
+chat_loop(remote_app)
+     
+Cleaning up
+
+To avoid ongoing charges to your Google Cloud account, delete the resources you created in this tutorial.
+
+Resources to clean up:
+
+    The deployed Agent Engine instance
+    The Cloud Storage bucket
+
+Note: If you want to keep the agent for later use, skip the cleanup section.
+
+# Set these flags to control what gets deleted
+delete_agent_engine = True  # @param {type:"boolean"}
+delete_bucket = True  # @param {type:"boolean"}
+
+if delete_agent_engine:
+    print("🗑️  Deleting Agent Engine instance...")
+    # Find and delete all agents with our display name
+    agents = agent_engines.list(filter="display_name=bigquery-data-analyst")
+    for agent in agents:
+        agent.delete(force=True)
+    print("✅ Agent Engine instance deleted successfully!")
+
+if delete_bucket:
+    print("\n🗑️  Deleting Cloud Storage bucket...")
+    !gsutil rm -r {BUCKET_URI}
+    print("✅ Bucket deleted successfully!")
+
+print("\n✅ Cleanup complete!")
+     
+Next Steps
+
+Congratulations! You've successfully:
+
+    Discovered MCP servers using Cloud API Registry
+    Enabled BigQuery MCP tools
+    Built a data analyst agent with Tool Registry
+    Tested the agent locally
+    Deployed it to Vertex AI Agent Engine
+
+What to explore next:
+
+    Customize the agent: Modify the instruction to specialize in specific types of analysis
+    Filter tools: Use tool_filter to limit which BigQuery tools the agent can access
+    Add more MCP servers: Explore other MCP servers in the registry
+    Build multi-agent systems: Combine multiple agents with different capabilities
+    Integrate with applications: Use the Agent Engine API to embed your agent in applications
+
+Learn more:
+
+    Cloud API Registry documentation
+    Vertex AI Agent Engine documentation
+    Google Agent Development Kit (ADK)
+    Model Context Protocol
+

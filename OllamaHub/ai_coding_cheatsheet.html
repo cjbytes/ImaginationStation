@@ -1,0 +1,175 @@
+
+<h2 class="sr-only">AI Coding Prompt Cheat Sheet — copy-paste templates organized by category</h2>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;padding:4px 0 16px}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:16px}
+.card-title{font-size:13px;font-weight:500;color:var(--color-text-secondary);letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card-title i{font-size:16px}
+.prompt{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.prompt:hover{border-color:var(--color-border-secondary)}
+.prompt:last-child{margin-bottom:0}
+.prompt-label{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.prompt-text{font-size:12px;color:var(--color-text-secondary);line-height:1.5;font-family:var(--font-mono)}
+.copy-hint{font-size:11px;color:var(--color-text-tertiary);margin-top:3px}
+.copied{color:var(--color-text-success)!important}
+.section-title{font-size:18px;font-weight:500;color:var(--color-text-primary);margin:20px 0 10px}
+.tip{background:var(--color-background-secondary);border-left:2px solid var(--color-border-secondary);padding:10px 14px;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;margin-bottom:12px;font-size:13px;color:var(--color-text-secondary);line-height:1.6}
+</style>
+
+<p class="section-title">AI coding prompt cheat sheet</p>
+<p class="tip">Click any prompt to copy it. Replace the <code>[BRACKETS]</code> with your specifics before sending.</p>
+
+<div class="grid">
+
+<div class="card">
+  <div class="card-title"><i class="ti ti-bug" aria-hidden="true"></i> Fix errors</div>
+  <div class="prompt" onclick="copy(this, 'I got this error: [PASTE ERROR]\n\nIn this code:\n[PASTE CODE]\n\nFix it and explain what caused it.')">
+    <div class="prompt-label">Fix a specific error</div>
+    <div class="prompt-text">I got this error: [PASTE ERROR]\nIn this code: [PASTE CODE]\nFix it and explain what caused it.</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+  <div class="prompt" onclick="copy(this, 'Review this [LANGUAGE] code for bugs, edge cases, and crashes. List each issue and provide the fixed version:\n\n[PASTE CODE]')">
+    <div class="prompt-label">Find hidden bugs</div>
+    <div class="prompt-text">Review this [LANGUAGE] code for bugs, edge cases, and crashes. List each issue and fix...</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+  <div class="prompt" onclick="copy(this, 'This code works but breaks when [DESCRIBE EDGE CASE]. Find why and fix it:\n\n[PASTE CODE]')">
+    <div class="prompt-label">Fix edge case</div>
+    <div class="prompt-text">This code works but breaks when [DESCRIBE EDGE CASE]. Find why and fix it...</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><i class="ti ti-sparkles" aria-hidden="true"></i> Generate code</div>
+  <div class="prompt" onclick="copy(this, 'Write a [LANGUAGE] function that:\n- Takes [INPUT]\n- Returns [OUTPUT]\n- Handles [EDGE CASES]\n- Include XML doc comments')">
+    <div class="prompt-label">Write a function</div>
+    <div class="prompt-text">Write a [LANGUAGE] function that takes [INPUT], returns [OUTPUT], handles [EDGE CASES], with doc comments.</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+  <div class="prompt" onclick="copy(this, 'Create a [LANGUAGE] class for [PURPOSE] with:\n- Properties: [LIST]\n- Methods: [LIST]\n- Constructor that validates inputs\n- Full XML documentation')">
+    <div class="prompt-label">Create a class</div>
+    <div class="prompt-text">Create a [LANGUAGE] class for [PURPOSE] with properties, methods, validation, and documentation.</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+  <div class="prompt" onclick="copy(this, 'I need [LANGUAGE] code to [DESCRIBE TASK]. Requirements:\n1. [REQUIREMENT 1]\n2. [REQUIREMENT 2]\nDo not use external libraries unless necessary.')">
+    <div class="prompt-label">General generation</div>
+    <div class="prompt-text">I need [LANGUAGE] code to [DESCRIBE TASK]. Requirements: 1. [...] 2. [...] No external libs.</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><i class="ti ti-refresh" aria-hidden="true"></i> Refactor</div>
+  <div class="prompt" onclick="copy(this, 'Refactor this [LANGUAGE] code to:\n- Follow SOLID principles\n- Improve readability\n- Reduce duplication\n- Keep the exact same behavior\n\n[PASTE CODE]')">
+    <div class="prompt-label">Full refactor</div>
+    <div class="prompt-text">Refactor this [LANGUAGE] code: SOLID principles, better readability, no duplication, same behavior.</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+  <div class="prompt" onclick="copy(this, 'This function is too long. Split it into smaller, well-named methods. Keep the same logic:\n\n[PASTE CODE]')">
+    <div class="prompt-label">Split long function</div>
+    <div class="prompt-text">This function is too long. Split it into smaller, well-named methods. Same logic...</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+  <div class="prompt" onclick="copy(this, 'Improve the performance of this code. Explain what you changed and why it is faster:\n\n[PASTE CODE]')">
+    <div class="prompt-label">Improve performance</div>
+    <div class="prompt-text">Improve the performance of this code. Explain what you changed and why it is faster...</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><i class="ti ti-test-pipe" aria-hidden="true"></i> Testing</div>
+  <div class="prompt" onclick="copy(this, 'Write [FRAMEWORK] unit tests for this [LANGUAGE] code. Include:\n- Happy path tests\n- Edge case tests\n- One test expected to fail\n\n[PASTE CODE]')">
+    <div class="prompt-label">Write unit tests</div>
+    <div class="prompt-text">Write [FRAMEWORK] unit tests: happy path, edge cases, one expected failure.</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+  <div class="prompt" onclick="copy(this, 'This test is failing:\n[PASTE TEST]\n\nThis is the code being tested:\n[PASTE CODE]\n\nWhy is it failing and how do I fix it?')">
+    <div class="prompt-label">Fix failing test</div>
+    <div class="prompt-text">This test is failing: [TEST]. This is the code being tested: [CODE]. Why and how to fix?</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><i class="ti ti-book" aria-hidden="true"></i> Explain & document</div>
+  <div class="prompt" onclick="copy(this, 'Explain this code to me like I am a junior developer. Walk through it step by step:\n\n[PASTE CODE]')">
+    <div class="prompt-label">Explain code simply</div>
+    <div class="prompt-text">Explain this code like I am a junior dev. Walk through it step by step...</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+  <div class="prompt" onclick="copy(this, 'Add complete XML/JSDoc documentation comments to every method and property in this code. Do not change any logic:\n\n[PASTE CODE]')">
+    <div class="prompt-label">Add doc comments</div>
+    <div class="prompt-text">Add complete XML/JSDoc documentation to every method and property. Do not change logic...</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+  <div class="prompt" onclick="copy(this, 'Write a README.md for this project that includes: what it does, how to install, how to run, example usage, and known limitations:\n\n[PASTE CODE OR DESCRIPTION]')">
+    <div class="prompt-label">Generate README</div>
+    <div class="prompt-text">Write a README.md: what it does, install, run, example usage, known limitations...</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><i class="ti ti-shield-check" aria-hidden="true"></i> Review & security</div>
+  <div class="prompt" onclick="copy(this, 'Do a security review of this code. List every vulnerability, its severity (low/medium/high/critical), and how to fix it:\n\n[PASTE CODE]')">
+    <div class="prompt-label">Security audit</div>
+    <div class="prompt-text">Security review: list every vulnerability, severity, and fix.</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+  <div class="prompt" onclick="copy(this, 'Review this code as a senior engineer. Give me:\n1. What is done well\n2. What must be fixed\n3. What could be improved\n\n[PASTE CODE]')">
+    <div class="prompt-label">Senior code review</div>
+    <div class="prompt-text">Senior review: what is done well, what must be fixed, what could be improved...</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><i class="ti ti-stars" aria-hidden="true"></i> Power prompts</div>
+  <div class="prompt" onclick="copy(this, 'You are a senior [LANGUAGE] engineer. I will describe a feature. Think through the implementation step by step, then write the complete production-ready code with error handling, logging, and tests.\n\nFeature: [DESCRIBE FEATURE]')">
+    <div class="prompt-label">Full feature build</div>
+    <div class="prompt-text">You are a senior [LANGUAGE] engineer. Think through then build complete production-ready code for: [FEATURE]</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+  <div class="prompt" onclick="copy(this, 'I will show you code that has a bug. Do not fix it immediately. First ask me clarifying questions until you are confident you understand the problem. Then fix it.')">
+    <div class="prompt-label">Clarify before fixing</div>
+    <div class="prompt-text">Do not fix immediately. Ask clarifying questions until confident, then fix.</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+  <div class="prompt" onclick="copy(this, 'Rewrite this code in [TARGET LANGUAGE]. Keep the exact same logic and behavior. Add comments explaining any language differences:\n\n[PASTE CODE]')">
+    <div class="prompt-label">Translate language</div>
+    <div class="prompt-text">Rewrite in [TARGET LANGUAGE], same logic, add comments on language differences...</div>
+    <div class="copy-hint">click to copy</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><i class="ti ti-bulb" aria-hidden="true"></i> Tips for better answers</div>
+  <div style="font-size:13px;color:var(--color-text-secondary);line-height:1.8">
+    <div style="margin-bottom:8px">✓ Always say the <strong>language and framework</strong></div>
+    <div style="margin-bottom:8px">✓ Paste the <strong>exact error message</strong>, not a summary</div>
+    <div style="margin-bottom:8px">✓ Say <strong>"do not use external libraries"</strong> if you want pure code</div>
+    <div style="margin-bottom:8px">✓ Add <strong>"explain each change"</strong> to understand what was fixed</div>
+    <div style="margin-bottom:8px">✓ Say <strong>"production ready"</strong> for error handling + edge cases</div>
+    <div style="margin-bottom:8px">✓ Use <strong>"step by step"</strong> for complex problems</div>
+    <div>✓ If output is cut off, just say <strong>"continue"</strong></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function copy(el, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const hint = el.querySelector('.copy-hint');
+    hint.textContent = 'copied!';
+    hint.classList.add('copied');
+    setTimeout(() => {
+      hint.textContent = 'click to copy';
+      hint.classList.remove('copied');
+    }, 2000);
+  });
+}
+</script>

@@ -1,0 +1,5935 @@
+&#x20;   private void ClearChat() { Messages.Clear(); OutputText = string.Empty; }
+
+}
+
+
+
+public class CopilotMessage
+
+{
+
+&#x20;   public string Role    { get; set; } = string.Empty;
+
+&#x20;   public string Content { get; set; } = string.Empty;
+
+&#x20;   public string? Model  { get; set; }
+
+&#x20;   public bool IsUser      => Role == "user";
+
+&#x20;   public bool IsAssistant => Role == "assistant";
+
+}
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\ViewModels\\PersonaViewModel.cs" @'
+
+using System.Collections.ObjectModel;
+
+using CommunityToolkit.Mvvm.ComponentModel;
+
+using CommunityToolkit.Mvvm.Input;
+
+using OllamaHub.Models;
+
+using OllamaHub.Services;
+
+namespace OllamaHub.ViewModels;
+
+public partial class PersonaViewModel : BaseViewModel
+
+{
+
+&#x20;   private readonly PersonaService \_svc;
+
+&#x20;   private readonly OllamaService  \_ollama;
+
+&#x20;   public ObservableCollection<Persona> Personas => \_svc.Personas;
+
+&#x20;   \[ObservableProperty] private Persona? \_selected;
+
+&#x20;   \[ObservableProperty] private string \_name         = string.Empty;
+
+&#x20;   \[ObservableProperty] private string \_description  = string.Empty;
+
+&#x20;   \[ObservableProperty] private string \_systemPrompt = string.Empty;
+
+&#x20;   \[ObservableProperty] private string \_avatarColor  = "#7C6AF7";
+
+&#x20;   \[ObservableProperty] private ObservableCollection<OllamaModelInfo> \_availableModels = new();
+
+&#x20;   \[ObservableProperty] private string \_preferredModel = string.Empty;
+
+&#x20;   public List<string> AvatarColors { get; } = new() { "#7C6AF7","#60A5FA","#4ADE80","#FB923C","#F87171","#F472B6","#2DD4BF","#FBBF24" };
+
+&#x20;   public PersonaViewModel(PersonaService svc, OllamaService ollama)
+
+&#x20;   {
+
+&#x20;       \_svc = svc; \_ollama = ollama; \_ = LoadModelsAsync();
+
+&#x20;   }
+
+&#x20;   private async Task LoadModelsAsync()
+
+&#x20;   {
+
+&#x20;       var models = await \_ollama.GetModelsAsync();
+
+&#x20;       AvailableModels.Clear(); foreach (var m in models) AvailableModels.Add(m);
+
+&#x20;   }
+
+&#x20;   \[RelayCommand]
+
+&#x20;   private void Save()
+
+&#x20;   {
+
+&#x20;       if (string.IsNullOrWhiteSpace(Name)) return;
+
+&#x20;       if (Selected != null)
+
+&#x20;       {
+
+&#x20;           Selected.Name = Name; Selected.Description = Description;
+
+&#x20;           Selected.SystemPrompt = SystemPrompt; Selected.AvatarColor = AvatarColor;
+
+&#x20;           Selected.PreferredModel = PreferredModel; \_svc.Update();
+
+&#x20;       }
+
+&#x20;       else
+
+&#x20;       {
+
+&#x20;           \_svc.Add(new Persona { Name=Name, Description=Description, SystemPrompt=SystemPrompt, AvatarColor=AvatarColor, PreferredModel=PreferredModel });
+
+&#x20;       }
+
+&#x20;   }
+
+&#x20;   \[RelayCommand] private void Delete() { if (Selected != null) \_svc.Delete(Selected); Selected=null; Clear(); }
+
+&#x20;   \[RelayCommand]
+
+&#x20;   private void New() { Selected=null; Clear(); }
+
+&#x20;   private void Clear() { Name=Description=SystemPrompt=PreferredModel=string.Empty; AvatarColor="#7C6AF7"; }
+
+&#x20;   public void SelectPersona(Persona p)
+
+&#x20;   {
+
+&#x20;       Selected = p; Name = p.Name; Description = p.Description;
+
+&#x20;       SystemPrompt = p.SystemPrompt; AvatarColor = p.AvatarColor; PreferredModel = p.PreferredModel;
+
+&#x20;   }
+
+}
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\ViewModels\\ChainViewModel.cs" @'
+
+using System.Collections.ObjectModel;
+
+using CommunityToolkit.Mvvm.ComponentModel;
+
+using CommunityToolkit.Mvvm.Input;
+
+using OllamaHub.Models;
+
+using OllamaHub.Services;
+
+namespace OllamaHub.ViewModels;
+
+public partial class ChainViewModel : BaseViewModel
+
+{
+
+&#x20;   private readonly ChainService  \_svc;
+
+&#x20;   private readonly OllamaService \_ollama;
+
+&#x20;   public ObservableCollection<PromptChain> Chains => \_svc.Chains;
+
+&#x20;   \[ObservableProperty] private PromptChain?  \_selectedChain;
+
+&#x20;   \[ObservableProperty] private ObservableCollection<ChainNode> \_nodes = new();
+
+&#x20;   \[ObservableProperty] private bool   \_isRunning;
+
+&#x20;   \[ObservableProperty] private string \_statusText  = "Select a chain or create a new one";
+
+&#x20;   \[ObservableProperty] private string \_initialInput = string.Empty;
+
+&#x20;   \[ObservableProperty] private ObservableCollection<OllamaModelInfo> \_availableModels = new();
+
+
+
+&#x20;   public ChainViewModel(ChainService svc, OllamaService ollama)
+
+&#x20;   {
+
+&#x20;       \_svc = svc; \_ollama = ollama; \_ = LoadModelsAsync();
+
+&#x20;   }
+
+
+
+&#x20;   private async Task LoadModelsAsync()
+
+&#x20;   {
+
+&#x20;       var models = await \_ollama.GetModelsAsync();
+
+&#x20;       AvailableModels.Clear(); foreach (var m in models) AvailableModels.Add(m);
+
+&#x20;   }
+
+
+
+&#x20;   public void SelectChain(PromptChain chain)
+
+&#x20;   {
+
+&#x20;       SelectedChain = chain; Nodes.Clear();
+
+&#x20;       foreach (var n in chain.Nodes.OrderBy(n => n.Order)) Nodes.Add(n);
+
+&#x20;   }
+
+
+
+&#x20;   \[RelayCommand]
+
+&#x20;   private async Task RunChainAsync()
+
+&#x20;   {
+
+&#x20;       if (SelectedChain == null || IsRunning) return;
+
+&#x20;       IsRunning = true;
+
+&#x20;       string prevOutput = InitialInput;
+
+&#x20;       foreach (var node in Nodes)
+
+&#x20;       {
+
+&#x20;           node.IsRunning = true; node.IsDone = false; node.LastOutput = string.Empty;
+
+&#x20;           StatusText = $"Running: {node.Name}...";
+
+&#x20;           var prompt = node.Prompt
+
+&#x20;               .Replace("{{INPUT}}", InitialInput)
+
+&#x20;               .Replace("{{PREV}}", prevOutput);
+
+&#x20;           var model = string.IsNullOrEmpty(node.Model) \&\& AvailableModels.Count > 0
+
+&#x20;               ? AvailableModels\[0].Name : node.Model;
+
+&#x20;           var sb = new System.Text.StringBuilder();
+
+&#x20;           try
+
+&#x20;           {
+
+&#x20;               await foreach (var token in \_ollama.GenerateStreamAsync(model, prompt))
+
+&#x20;               {
+
+&#x20;                   sb.Append(token);
+
+&#x20;                   node.LastOutput = sb.ToString();
+
+&#x20;                   var idx = Nodes.IndexOf(node);
+
+&#x20;                   if (idx >= 0) { Nodes.RemoveAt(idx); Nodes.Insert(idx, node); }
+
+&#x20;               }
+
+&#x20;               prevOutput = sb.ToString();
+
+&#x20;           }
+
+&#x20;           catch (Exception ex) { node.LastOutput = $"Error: {ex.Message}"; }
+
+&#x20;           node.IsRunning = false; node.IsDone = true;
+
+&#x20;           var idx2 = Nodes.IndexOf(node);
+
+&#x20;           if (idx2 >= 0) { Nodes.RemoveAt(idx2); Nodes.Insert(idx2, node); }
+
+&#x20;       }
+
+&#x20;       IsRunning = false; StatusText = "Chain complete!";
+
+&#x20;       \_svc.Update();
+
+&#x20;   }
+
+
+
+&#x20;   \[RelayCommand]
+
+&#x20;   private void AddNode()
+
+&#x20;   {
+
+&#x20;       if (SelectedChain == null) return;
+
+&#x20;       var node = new ChainNode { Order = Nodes.Count, Name = $"Step {Nodes.Count+1}",
+
+&#x20;           Model = AvailableModels.Count > 0 ? AvailableModels\[0].Name : "" };
+
+&#x20;       SelectedChain.Nodes.Add(node); Nodes.Add(node); \_svc.Update();
+
+&#x20;   }
+
+
+
+&#x20;   \[RelayCommand]
+
+&#x20;   private void RemoveNode(ChainNode node)
+
+&#x20;   {
+
+&#x20;       if (SelectedChain == null) return;
+
+&#x20;       SelectedChain.Nodes.Remove(node); Nodes.Remove(node); \_svc.Update();
+
+&#x20;   }
+
+
+
+&#x20;   \[RelayCommand]
+
+&#x20;   private void NewChain()
+
+&#x20;   {
+
+&#x20;       var chain = new PromptChain { Name = "New Chain" };
+
+&#x20;       \_svc.Add(chain); SelectChain(chain);
+
+&#x20;   }
+
+
+
+&#x20;   \[RelayCommand]
+
+&#x20;   private void DeleteChain() { if (SelectedChain != null) { \_svc.Delete(SelectedChain); SelectedChain=null; Nodes.Clear(); } }
+
+}
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\ViewModels\\HistoryViewModel.cs" @'
+
+using System.Collections.ObjectModel;
+
+using CommunityToolkit.Mvvm.ComponentModel;
+
+using CommunityToolkit.Mvvm.Input;
+
+using OllamaHub.Models;
+
+using OllamaHub.Services;
+
+namespace OllamaHub.ViewModels;
+
+public partial class HistoryViewModel : ObservableObject
+
+{
+
+&#x20;   private readonly ChatSessionService \_sessions;
+
+&#x20;   \[ObservableProperty] private ObservableCollection<ChatSession> \_filteredSessions = new();
+
+&#x20;   \[ObservableProperty] private string \_searchQuery = string.Empty;
+
+&#x20;   public HistoryViewModel(ChatSessionService sessions)
+
+&#x20;   {
+
+&#x20;       \_sessions = sessions;
+
+&#x20;       \_sessions.SessionsChanged += (\_, \_) => App.UIDispatcher?.TryEnqueue(Refresh);
+
+&#x20;       Refresh();
+
+&#x20;   }
+
+&#x20;   partial void OnSearchQueryChanged(string value) => Refresh();
+
+&#x20;   public void Refresh()
+
+&#x20;   {
+
+&#x20;       FilteredSessions.Clear();
+
+&#x20;       var q = \_sessions.Sessions.AsEnumerable();
+
+&#x20;       if (!string.IsNullOrWhiteSpace(SearchQuery))
+
+&#x20;           q = q.Where(s => s.Title.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
+
+&#x20;               s.Messages.Any(m => m.Content.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase)));
+
+&#x20;       foreach (var s in q.OrderByDescending(s => s.LastMessageAt)) FilteredSessions.Add(s);
+
+&#x20;   }
+
+&#x20;   \[RelayCommand] private void DeleteChat(ChatSession s) { \_sessions.Delete(s); FilteredSessions.Remove(s); }
+
+}
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\ViewModels\\ModelsViewModel.cs" @'
+
+using System.Collections.ObjectModel;
+
+using CommunityToolkit.Mvvm.ComponentModel;
+
+using CommunityToolkit.Mvvm.Input;
+
+using OllamaHub.Models;
+
+using OllamaHub.Services;
+
+namespace OllamaHub.ViewModels;
+
+public partial class ModelsViewModel : BaseViewModel
+
+{
+
+&#x20;   private readonly OllamaService \_ollama;
+
+&#x20;   \[ObservableProperty] private ObservableCollection<OllamaModelInfo> \_models = new();
+
+&#x20;   \[ObservableProperty] private string \_pullModelName = string.Empty;
+
+&#x20;   \[ObservableProperty] private string \_pullStatus    = string.Empty;
+
+&#x20;   \[ObservableProperty] private double \_pullProgress  = 0;
+
+&#x20;   \[ObservableProperty] private bool   \_isPulling;
+
+&#x20;   \[ObservableProperty] private bool   \_isLoading;
+
+&#x20;   private CancellationTokenSource? \_cts;
+
+&#x20;   public ModelsViewModel(OllamaService ollama) { \_ollama = ollama; \_ = LoadModelsAsync(); }
+
+&#x20;   \[RelayCommand] private async Task LoadModelsAsync() { IsLoading=true; var m=await \_ollama.GetModelsAsync(); Models.Clear(); foreach(var x in m) Models.Add(x); IsLoading=false; }
+
+&#x20;   \[RelayCommand] private async Task PullModelAsync()
+
+&#x20;   {
+
+&#x20;       if (string.IsNullOrWhiteSpace(PullModelName)||IsPulling) return;
+
+&#x20;       IsPulling=true; PullStatus="Starting..."; PullProgress=0; \_cts=new CancellationTokenSource();
+
+&#x20;       try
+
+&#x20;       {
+
+&#x20;           await foreach (var chunk in \_ollama.PullModelAsync(PullModelName.Trim(), \_cts.Token))
+
+&#x20;           {
+
+&#x20;               PullStatus=chunk.Status;
+
+&#x20;               if (chunk.Total.HasValue\&\&chunk.Total>0) PullProgress=(double)(chunk.Completed??0)/chunk.Total.Value\*100;
+
+&#x20;           }
+
+&#x20;           PullStatus="Done!"; PullModelName=string.Empty; await LoadModelsAsync();
+
+&#x20;       }
+
+&#x20;       catch (OperationCanceledException) { PullStatus="Cancelled"; }
+
+&#x20;       catch (Exception ex) { PullStatus=$"Error: {ex.Message}"; }
+
+&#x20;       finally { IsPulling=false; PullProgress=0; }
+
+&#x20;   }
+
+&#x20;   \[RelayCommand] private async Task DeleteModelAsync(OllamaModelInfo m) { if (await \_ollama.DeleteModelAsync(m.Name)) Models.Remove(m); }
+
+&#x20;   \[RelayCommand] private void CancelPull() => \_cts?.Cancel();
+
+}
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\ViewModels\\SettingsViewModel.cs" @'
+
+using CommunityToolkit.Mvvm.ComponentModel;
+
+using CommunityToolkit.Mvvm.Input;
+
+using OllamaHub.Services;
+
+namespace OllamaHub.ViewModels;
+
+public partial class SettingsViewModel : BaseViewModel
+
+{
+
+&#x20;   private readonly SettingsService \_settings;
+
+&#x20;   \[ObservableProperty] private string \_ollamaUrl;
+
+&#x20;   \[ObservableProperty] private string \_defaultModel;
+
+&#x20;   \[ObservableProperty] private string \_systemPrompt;
+
+&#x20;   \[ObservableProperty] private float  \_temperature;
+
+&#x20;   \[ObservableProperty] private int    \_maxTokens;
+
+&#x20;   \[ObservableProperty] private bool   \_streamResponses;
+
+&#x20;   \[ObservableProperty] private string \_copilotModel;
+
+&#x20;   \[ObservableProperty] private string \_savedMessage = string.Empty;
+
+&#x20;   public SettingsViewModel(SettingsService settings)
+
+&#x20;   {
+
+&#x20;       \_settings=settings; \_ollamaUrl=settings.Current.OllamaBaseUrl; \_defaultModel=settings.Current.DefaultModel;
+
+&#x20;       \_systemPrompt=settings.Current.DefaultSystemPrompt; \_temperature=settings.Current.Temperature;
+
+&#x20;       \_maxTokens=settings.Current.MaxTokens; \_streamResponses=settings.Current.StreamResponses;
+
+&#x20;       \_copilotModel=settings.Current.CopilotModel;
+
+&#x20;   }
+
+&#x20;   \[RelayCommand] private void Save()
+
+&#x20;   {
+
+&#x20;       \_settings.Current.OllamaBaseUrl=OllamaUrl; \_settings.Current.DefaultModel=DefaultModel;
+
+&#x20;       \_settings.Current.DefaultSystemPrompt=SystemPrompt; \_settings.Current.Temperature=Temperature;
+
+&#x20;       \_settings.Current.MaxTokens=MaxTokens; \_settings.Current.StreamResponses=StreamResponses;
+
+&#x20;       \_settings.Current.CopilotModel=CopilotModel; \_settings.Save(); SavedMessage="Saved!";
+
+&#x20;       \_ = Task.Delay(2000).ContinueWith(\_=>App.UIDispatcher?.TryEnqueue(()=>SavedMessage=string.Empty));
+
+&#x20;   }
+
+}
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\ViewModels\\PerformanceViewModel.cs" @'
+
+using System.Collections.ObjectModel;
+
+using CommunityToolkit.Mvvm.ComponentModel;
+
+using CommunityToolkit.Mvvm.Input;
+
+using OllamaHub.Models;
+
+using OllamaHub.Services;
+
+namespace OllamaHub.ViewModels;
+
+public partial class PerformanceViewModel : BaseViewModel
+
+{
+
+&#x20;   private readonly PerformanceService \_perf;
+
+&#x20;   private readonly OllamaService      \_ollama;
+
+&#x20;   private readonly System.Timers.Timer \_ticker;
+
+&#x20;   \[ObservableProperty] private double \_currentTps;
+
+&#x20;   \[ObservableProperty] private double \_avgLatencyMs;
+
+&#x20;   \[ObservableProperty] private int    \_totalTokens;
+
+&#x20;   \[ObservableProperty] private int    \_totalMessages;
+
+&#x20;   \[ObservableProperty] private double \_uptimeMinutes;
+
+&#x20;   \[ObservableProperty] private double \_estimatedSavings;
+
+&#x20;   \[ObservableProperty] private bool   \_ollamaOnline;
+
+&#x20;   \[ObservableProperty] private ObservableCollection<PerformanceSample> \_samples = new();
+
+&#x20;   public PerformanceViewModel(PerformanceService perf, OllamaService ollama)
+
+&#x20;   {
+
+&#x20;       \_perf=perf; \_ollama=ollama;
+
+&#x20;       \_ticker=new System.Timers.Timer(2000); \_ticker.Elapsed+=(\_,\_)=>Refresh(); \_ticker.Start(); Refresh();
+
+&#x20;   }
+
+&#x20;   private void Refresh()
+
+&#x20;   {
+
+&#x20;       var stats=\_perf.GetStats();
+
+&#x20;       App.UIDispatcher?.TryEnqueue(()=>
+
+&#x20;       {
+
+&#x20;           CurrentTps=Math.Round(\_perf.CurrentTokensPerSec,1); AvgLatencyMs=Math.Round(stats.AvgLatencyMs,0);
+
+&#x20;           TotalTokens=stats.TotalTokens; TotalMessages=stats.TotalMessages;
+
+&#x20;           UptimeMinutes=Math.Round(stats.UptimeMinutes,1); EstimatedSavings=Math.Round(stats.EstimatedSavingsUsd,4);
+
+&#x20;           Samples.Clear(); foreach(var s in \_perf.RecentSamples.TakeLast(20)) Samples.Add(s);
+
+&#x20;       });
+
+&#x20;   }
+
+&#x20;   \[RelayCommand] private async Task CheckStatusAsync() => OllamaOnline = await \_ollama.IsOnlineAsync();
+
+}
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\ViewModels\\PromptLibraryViewModel.cs" @'
+
+using System.Collections.ObjectModel;
+
+using CommunityToolkit.Mvvm.ComponentModel;
+
+using CommunityToolkit.Mvvm.Input;
+
+using OllamaHub.Models;
+
+using OllamaHub.Services;
+
+namespace OllamaHub.ViewModels;
+
+public partial class PromptLibraryViewModel : BaseViewModel
+
+{
+
+&#x20;   private readonly PromptLibraryService \_svc;
+
+&#x20;   public ObservableCollection<PromptTemplate> Templates => \_svc.Templates;
+
+&#x20;   \[ObservableProperty] private string \_newName="", \_newCategory="General", \_newContent="", \_searchText="";
+
+&#x20;   \[ObservableProperty] private PromptTemplate? \_selected;
+
+&#x20;   \[ObservableProperty] private ObservableCollection<PromptTemplate> \_filtered = new();
+
+&#x20;   public List<string> Categories { get; } = new() { "General","Coding","Writing","Learning","Language","Creative","Other" };
+
+&#x20;   public PromptLibraryViewModel(PromptLibraryService svc) { \_svc=svc; RefreshFiltered(); }
+
+&#x20;   partial void OnSearchTextChanged(string v) => RefreshFiltered();
+
+&#x20;   public void RefreshFiltered()
+
+&#x20;   {
+
+&#x20;       Filtered.Clear(); var q=SearchText.Trim().ToLowerInvariant();
+
+&#x20;       foreach(var t in Templates) if(string.IsNullOrEmpty(q)||t.Name.Contains(q,StringComparison.OrdinalIgnoreCase)||t.Category.Contains(q,StringComparison.OrdinalIgnoreCase)) Filtered.Add(t);
+
+&#x20;   }
+
+&#x20;   \[RelayCommand] private void AddTemplate() { if(string.IsNullOrWhiteSpace(NewName)||string.IsNullOrWhiteSpace(NewContent)) return; \_svc.Add(new PromptTemplate{Name=NewName.Trim(),Category=NewCategory,Content=NewContent.Trim()}); NewName=NewContent=string.Empty; RefreshFiltered(); }
+
+&#x20;   \[RelayCommand] private void DeleteTemplate(PromptTemplate t) { \_svc.Delete(t); RefreshFiltered(); }
+
+&#x20;   \[RelayCommand] private void SaveSelected() { if(Selected!=null){\_svc.Update();RefreshFiltered();} }
+
+}
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\ViewModels\\ModelCompareViewModel.cs" @'
+
+using System.Collections.ObjectModel;
+
+using CommunityToolkit.Mvvm.ComponentModel;
+
+using CommunityToolkit.Mvvm.Input;
+
+using OllamaHub.Models;
+
+using OllamaHub.Services;
+
+namespace OllamaHub.ViewModels;
+
+public partial class ModelCompareViewModel : BaseViewModel
+
+{
+
+&#x20;   private readonly OllamaService \_ollama;
+
+&#x20;   \[ObservableProperty] private ObservableCollection<OllamaModelInfo> \_availableModels = new();
+
+&#x20;   \[ObservableProperty] private string \_modelA="",\_modelB="",\_prompt="",\_responseA="",\_responseB="";
+
+&#x20;   \[ObservableProperty] private bool \_isRunning;
+
+&#x20;   \[ObservableProperty] private double \_msA,\_msB;
+
+&#x20;   \[ObservableProperty] private int \_tokensA,\_tokensB;
+
+&#x20;   public ModelCompareViewModel(OllamaService ollama) { \_ollama=ollama; \_ =LoadModelsAsync(); }
+
+&#x20;   private async Task LoadModelsAsync() { var m=await \_ollama.GetModelsAsync(); AvailableModels.Clear(); foreach(var x in m) AvailableModels.Add(x); if(m.Count>0) ModelA=m\[0].Name; if(m.Count>1) ModelB=m\[1].Name; }
+
+&#x20;   \[RelayCommand] private async Task RunCompareAsync()
+
+&#x20;   {
+
+&#x20;       if(string.IsNullOrWhiteSpace(Prompt)||string.IsNullOrWhiteSpace(ModelA)||string.IsNullOrWhiteSpace(ModelB)) return;
+
+&#x20;       IsRunning=true; ResponseA=ResponseB=string.Empty; MsA=MsB=0; TokensA=TokensB=0;
+
+&#x20;       await Task.WhenAll(RunModelAsync(ModelA,t=>ResponseA+=t,(ms,tok)=>{MsA=ms;TokensA=tok;}), RunModelAsync(ModelB,t=>ResponseB+=t,(ms,tok)=>{MsB=ms;TokensB=tok;}));
+
+&#x20;       IsRunning=false;
+
+&#x20;   }
+
+&#x20;   private async Task RunModelAsync(string model,Action<string> onToken,Action<double,int> onDone)
+
+&#x20;   {
+
+&#x20;       var start=DateTime.UtcNow; int tokens=0;
+
+&#x20;       var req=new OllamaChatRequest{Model=model,Messages=new List<OllamaChatMessage>{new(){Role="user",Content=Prompt}},Stream=true};
+
+&#x20;       try { await foreach(var tok in \_ollama.ChatStreamAsync(req)){App.UIDispatcher?.TryEnqueue(()=>onToken(tok));tokens+=(int)Math.Ceiling(tok.Length/4.0);} }
+
+&#x20;       catch(Exception ex){App.UIDispatcher?.TryEnqueue(()=>onToken($"\\n\[Error: {ex.Message}]"));}
+
+&#x20;       onDone((DateTime.UtcNow-start).TotalMilliseconds,tokens);
+
+&#x20;   }
+
+&#x20;   \[RelayCommand] private void ClearAll(){Prompt=ResponseA=ResponseB=string.Empty;MsA=MsB=0;TokensA=TokensB=0;}
+
+}
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\ViewModels\\TerminalViewModel.cs" @'
+
+using System.Collections.ObjectModel;
+
+using System.Diagnostics;
+
+using CommunityToolkit.Mvvm.ComponentModel;
+
+using CommunityToolkit.Mvvm.Input;
+
+namespace OllamaHub.ViewModels;
+
+public partial class TerminalViewModel : BaseViewModel
+
+{
+
+&#x20;   \[ObservableProperty] private string \_inputCommand="",\_outputText="",\_workingDir=Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+&#x20;   \[ObservableProperty] private bool \_isRunning;
+
+&#x20;   private readonly List<string> \_history=new(); private int \_histIdx=-1;
+
+&#x20;   \[RelayCommand] private async Task RunCommandAsync()
+
+&#x20;   {
+
+&#x20;       if(string.IsNullOrWhiteSpace(InputCommand)||IsRunning) return;
+
+&#x20;       var cmd=InputCommand.Trim(); \_history.Insert(0,cmd); \_histIdx=-1;
+
+&#x20;       if(cmd.StartsWith("cd ",StringComparison.OrdinalIgnoreCase)){var t=cmd\[3..].Trim().Trim('"');var nd=Path.IsPathRooted(t)?t:Path.Combine(WorkingDir,t);if(Directory.Exists(nd))WorkingDir=Path.GetFullPath(nd);else AppendLine($"cd: not found: {t}");InputCommand=string.Empty;return;}
+
+&#x20;       if(cmd is "cls" or "clear"){OutputText=string.Empty;InputCommand=string.Empty;return;}
+
+&#x20;       AppendLine($"\\n$ {cmd}"); IsRunning=true; InputCommand=string.Empty;
+
+&#x20;       try{var psi=new ProcessStartInfo("cmd.exe",$"/c {cmd}"){RedirectStandardOutput=true,RedirectStandardError=true,UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=WorkingDir};using var proc=Process.Start(psi)!;var o=await proc.StandardOutput.ReadToEndAsync();var e=await proc.StandardError.ReadToEndAsync();await proc.WaitForExitAsync();if(!string.IsNullOrEmpty(o))AppendLine(o.TrimEnd());if(!string.IsNullOrEmpty(e))AppendLine($"\[ERR] {e.TrimEnd()}");}
+
+&#x20;       catch(Exception ex){AppendLine($"\[Error] {ex.Message}");}finally{IsRunning=false;}
+
+&#x20;   }
+
+&#x20;   private void AppendLine(string t)=>App.UIDispatcher?.TryEnqueue(()=>OutputText+=t+"\\n");
+
+&#x20;   public void HistoryUp(){if(\_history.Count==0)return;\_histIdx=Math.Min(\_histIdx+1,\_history.Count-1);InputCommand=\_history\[\_histIdx];}
+
+&#x20;   public void HistoryDown(){\_histIdx=Math.Max(\_histIdx-1,-1);InputCommand=\_histIdx<0?string.Empty:\_history\[\_histIdx];}
+
+&#x20;   \[RelayCommand] private void ClearOutput()=>OutputText=string.Empty;
+
+}
+
+'@ -Encoding UTF8
+
+
+
+Write-Ok "All ViewModels written"
+
+
+
+\# ── APP.XAML + APP.XAML.CS ───────────────────────────────────────────────────
+
+Write-Step "Writing App.xaml + App.xaml.cs"
+
+Set-Content "$root\\App.xaml" @'
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Application x:Class="OllamaHub.App"
+
+&#x20;   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+
+&#x20;   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+&#x20; <Application.Resources>
+
+&#x20;   <ResourceDictionary>
+
+&#x20;     <ResourceDictionary.MergedDictionaries>
+
+&#x20;       <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls"/>
+
+&#x20;       <ResourceDictionary Source="Styles/AppStyles.xaml"/>
+
+&#x20;     </ResourceDictionary.MergedDictionaries>
+
+&#x20;   </ResourceDictionary>
+
+&#x20; </Application.Resources>
+
+</Application>
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\App.xaml.cs" @'
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Microsoft.UI.Dispatching;
+
+using Microsoft.UI.Xaml;
+
+using OllamaHub.Services;
+
+using OllamaHub.ViewModels;
+
+namespace OllamaHub;
+
+public partial class App : Application
+
+{
+
+&#x20;   public static IServiceProvider Services    { get; private set; } = null!;
+
+&#x20;   public static new App Current              => (App)Application.Current;
+
+&#x20;   public static DispatcherQueue? UIDispatcher{ get; private set; }
+
+&#x20;   private Window? \_window;
+
+&#x20;   public Window? MainWindowHandle => \_window;
+
+&#x20;   public App() { InitializeComponent(); Services = ConfigureServices(); }
+
+&#x20;   private static IServiceProvider ConfigureServices()
+
+&#x20;   {
+
+&#x20;       var s = new ServiceCollection();
+
+&#x20;       s.AddSingleton<OllamaService>();
+
+&#x20;       s.AddSingleton<ChatSessionService>();
+
+&#x20;       s.AddSingleton<SettingsService>();
+
+&#x20;       s.AddSingleton<ThemeService>();
+
+&#x20;       s.AddSingleton<PromptLibraryService>();
+
+&#x20;       s.AddSingleton<PersonaService>();
+
+&#x20;       s.AddSingleton<ChainService>();
+
+&#x20;       s.AddSingleton<ExportService>();
+
+&#x20;       s.AddSingleton<TokenCounterService>();
+
+&#x20;       s.AddSingleton<PerformanceService>();
+
+&#x20;       s.AddSingleton<VoiceService>();
+
+&#x20;       s.AddSingleton<SlashCommandService>();
+
+&#x20;       s.AddSingleton<ShareService>();
+
+&#x20;       s.AddTransient<MainViewModel>();
+
+&#x20;       s.AddTransient<ChatViewModel>();
+
+&#x20;       s.AddTransient<CopilotViewModel>();
+
+&#x20;       s.AddTransient<ModelsViewModel>();
+
+&#x20;       s.AddTransient<SettingsViewModel>();
+
+&#x20;       s.AddTransient<HistoryViewModel>();
+
+&#x20;       s.AddTransient<PromptLibraryViewModel>();
+
+&#x20;       s.AddTransient<ModelCompareViewModel>();
+
+&#x20;       s.AddTransient<TerminalViewModel>();
+
+&#x20;       s.AddTransient<PerformanceViewModel>();
+
+&#x20;       s.AddTransient<PersonaViewModel>();
+
+&#x20;       s.AddTransient<ChainViewModel>();
+
+&#x20;       return s.BuildServiceProvider();
+
+&#x20;   }
+
+&#x20;   protected override void OnLaunched(LaunchActivatedEventArgs args)
+
+&#x20;   {
+
+&#x20;       UIDispatcher = DispatcherQueue.GetForCurrentThread();
+
+&#x20;       \_window      = new MainWindow();
+
+&#x20;       \_window.Activate();
+
+&#x20;   }
+
+}
+
+'@ -Encoding UTF8
+
+Write-Ok "App.xaml + App.xaml.cs"
+
+
+
+\# ── MAINWINDOW ────────────────────────────────────────────────────────────────
+
+Write-Step "Writing MainWindow.xaml"
+
+Set-Content "$root\\MainWindow.xaml" @'
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Window x:Class="OllamaHub.MainWindow"
+
+&#x20;       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+
+&#x20;       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+&#x20;       Title="OllamaHub">
+
+&#x20; <Grid Background="#1E1E2E">
+
+&#x20;   <Grid.ColumnDefinitions>
+
+&#x20;     <ColumnDefinition Width="68"/>
+
+&#x20;     <ColumnDefinition Width="\*"/>
+
+&#x20;   </Grid.ColumnDefinitions>
+
+
+
+&#x20;   <!-- SIDEBAR -->
+
+&#x20;   <Border Grid.Column="0" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,1,0">
+
+&#x20;     <Grid>
+
+&#x20;       <Grid.RowDefinitions>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;         <RowDefinition Height="\*"/>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;       </Grid.RowDefinitions>
+
+
+
+&#x20;       <!-- Logo -->
+
+&#x20;       <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,18,0,18" Spacing="6">
+
+&#x20;         <Border Width="40" Height="40" CornerRadius="12" HorizontalAlignment="Center">
+
+&#x20;           <Border.Background>
+
+&#x20;             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+
+&#x20;               <GradientStop Color="#7C6AF7" Offset="0"/>
+
+&#x20;               <GradientStop Color="#60A5FA" Offset="1"/>
+
+&#x20;             </LinearGradientBrush>
+
+&#x20;           </Border.Background>
+
+&#x20;           <FontIcon Glyph="\&#xE99A;" FontSize="20" Foreground="White"
+
+&#x20;                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+&#x20;         </Border>
+
+&#x20;         <StackPanel HorizontalAlignment="Center" Spacing="2">
+
+&#x20;           <Ellipse x:Name="StatusDot" Width="7" Height="7" Fill="#45475A" HorizontalAlignment="Center"/>
+
+&#x20;           <TextBlock x:Name="StatusLabel" Text="..." FontSize="8" Foreground="#45475A"
+
+&#x20;                      HorizontalAlignment="Center" MaxWidth="60" TextTrimming="CharacterEllipsis"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </StackPanel>
+
+
+
+&#x20;       <!-- Nav buttons -->
+
+&#x20;       <StackPanel Grid.Row="1" Spacing="2" Margin="6,0">
+
+&#x20;         <Button x:Name="BtnChat"     Tag="Chat"        Click="NavBtn\_Click" Width="56" Height="56" Padding="0" HorizontalAlignment="Center" Background="Transparent" BorderThickness="0" CornerRadius="12">
+
+&#x20;           <ToolTipService.ToolTip><ToolTip Content="Chat — talk to your local AI models"/></ToolTipService.ToolTip>
+
+&#x20;           <StackPanel Spacing="3" HorizontalAlignment="Center">
+
+&#x20;             <FontIcon Glyph="\&#xE8BD;" FontSize="20" Foreground="#CDD6F4"/>
+
+&#x20;             <TextBlock Text="Chat"     FontSize="8" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;           </StackPanel>
+
+&#x20;         </Button>
+
+&#x20;         <Button x:Name="BtnCopilot"  Tag="Copilot"     Click="NavBtn\_Click" Width="56" Height="56" Padding="0" HorizontalAlignment="Center" Background="Transparent" BorderThickness="0" CornerRadius="12">
+
+&#x20;           <ToolTipService.ToolTip><ToolTip Content="CoPilot — AI code assistant powered by Ollama"/></ToolTipService.ToolTip>
+
+&#x20;           <StackPanel Spacing="3" HorizontalAlignment="Center">
+
+&#x20;             <FontIcon Glyph="\&#xE943;" FontSize="20" Foreground="#CDD6F4"/>
+
+&#x20;             <TextBlock Text="CoPilot"  FontSize="8" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;           </StackPanel>
+
+&#x20;         </Button>
+
+&#x20;         <Button x:Name="BtnModels"   Tag="Models"      Click="NavBtn\_Click" Width="56" Height="56" Padding="0" HorizontalAlignment="Center" Background="Transparent" BorderThickness="0" CornerRadius="12">
+
+&#x20;           <ToolTipService.ToolTip><ToolTip Content="Models — browse, pull and manage Ollama models"/></ToolTipService.ToolTip>
+
+&#x20;           <StackPanel Spacing="3" HorizontalAlignment="Center">
+
+&#x20;             <FontIcon Glyph="\&#xE77B;" FontSize="20" Foreground="#CDD6F4"/>
+
+&#x20;             <TextBlock Text="Models"   FontSize="8" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;           </StackPanel>
+
+&#x20;         </Button>
+
+&#x20;         <Button x:Name="BtnHistory"  Tag="History"     Click="NavBtn\_Click" Width="56" Height="56" Padding="0" HorizontalAlignment="Center" Background="Transparent" BorderThickness="0" CornerRadius="12">
+
+&#x20;           <ToolTipService.ToolTip><ToolTip Content="History — search and manage past conversations"/></ToolTipService.ToolTip>
+
+&#x20;           <StackPanel Spacing="3" HorizontalAlignment="Center">
+
+&#x20;             <FontIcon Glyph="\&#xE81C;" FontSize="20" Foreground="#CDD6F4"/>
+
+&#x20;             <TextBlock Text="History"  FontSize="8" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;           </StackPanel>
+
+&#x20;         </Button>
+
+&#x20;         <Button x:Name="BtnPersonas" Tag="Personas"    Click="NavBtn\_Click" Width="56" Height="56" Padding="0" HorizontalAlignment="Center" Background="Transparent" BorderThickness="0" CornerRadius="12">
+
+&#x20;           <ToolTipService.ToolTip><ToolTip Content="Personas — custom AI characters with unique personalities"/></ToolTipService.ToolTip>
+
+&#x20;           <StackPanel Spacing="3" HorizontalAlignment="Center">
+
+&#x20;             <FontIcon Glyph="\&#xE716;" FontSize="20" Foreground="#CDD6F4"/>
+
+&#x20;             <TextBlock Text="Personas" FontSize="8" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;           </StackPanel>
+
+&#x20;         </Button>
+
+&#x20;         <Button x:Name="BtnPrompts"  Tag="Prompts"     Click="NavBtn\_Click" Width="56" Height="56" Padding="0" HorizontalAlignment="Center" Background="Transparent" BorderThickness="0" CornerRadius="12">
+
+&#x20;           <ToolTipService.ToolTip><ToolTip Content="Prompts — reusable prompt template library (type / in chat)"/></ToolTipService.ToolTip>
+
+&#x20;           <StackPanel Spacing="3" HorizontalAlignment="Center">
+
+&#x20;             <FontIcon Glyph="\&#xE8F4;" FontSize="20" Foreground="#CDD6F4"/>
+
+&#x20;             <TextBlock Text="Prompts"  FontSize="8" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;           </StackPanel>
+
+&#x20;         </Button>
+
+&#x20;         <Button x:Name="BtnChain"    Tag="Chain"       Click="NavBtn\_Click" Width="56" Height="56" Padding="0" HorizontalAlignment="Center" Background="Transparent" BorderThickness="0" CornerRadius="12">
+
+&#x20;           <ToolTipService.ToolTip><ToolTip Content="Chain — visual prompt pipeline builder (unique feature!)"/></ToolTipService.ToolTip>
+
+&#x20;           <StackPanel Spacing="3" HorizontalAlignment="Center">
+
+&#x20;             <FontIcon Glyph="\&#xE8EF;" FontSize="20" Foreground="#CDD6F4"/>
+
+&#x20;             <TextBlock Text="Chain"    FontSize="8" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;           </StackPanel>
+
+&#x20;         </Button>
+
+&#x20;         <Button x:Name="BtnCompare"  Tag="Compare"     Click="NavBtn\_Click" Width="56" Height="56" Padding="0" HorizontalAlignment="Center" Background="Transparent" BorderThickness="0" CornerRadius="12">
+
+&#x20;           <ToolTipService.ToolTip><ToolTip Content="Compare — run the same prompt on two models side by side"/></ToolTipService.ToolTip>
+
+&#x20;           <StackPanel Spacing="3" HorizontalAlignment="Center">
+
+&#x20;             <FontIcon Glyph="\&#xE8C4;" FontSize="20" Foreground="#CDD6F4"/>
+
+&#x20;             <TextBlock Text="Compare"  FontSize="8" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;           </StackPanel>
+
+&#x20;         </Button>
+
+&#x20;         <Button x:Name="BtnPerf"     Tag="Performance" Click="NavBtn\_Click" Width="56" Height="56" Padding="0" HorizontalAlignment="Center" Background="Transparent" BorderThickness="0" CornerRadius="12">
+
+&#x20;           <ToolTipService.ToolTip><ToolTip Content="Stats — live performance dashboard, tokens/sec, cost savings"/></ToolTipService.ToolTip>
+
+&#x20;           <StackPanel Spacing="3" HorizontalAlignment="Center">
+
+&#x20;             <FontIcon Glyph="\&#xE9D9;" FontSize="20" Foreground="#CDD6F4"/>
+
+&#x20;             <TextBlock Text="Stats"    FontSize="8" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;           </StackPanel>
+
+&#x20;         </Button>
+
+&#x20;         <Button x:Name="BtnTerminal" Tag="Terminal"    Click="NavBtn\_Click" Width="56" Height="56" Padding="0" HorizontalAlignment="Center" Background="Transparent" BorderThickness="0" CornerRadius="12">
+
+&#x20;           <ToolTipService.ToolTip><ToolTip Content="Terminal — built-in command prompt with history"/></ToolTipService.ToolTip>
+
+&#x20;           <StackPanel Spacing="3" HorizontalAlignment="Center">
+
+&#x20;             <FontIcon Glyph="\&#xE756;" FontSize="20" Foreground="#CDD6F4"/>
+
+&#x20;             <TextBlock Text="Terminal" FontSize="8" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;           </StackPanel>
+
+&#x20;         </Button>
+
+&#x20;         <Button x:Name="BtnGuide"    Tag="Guide"       Click="NavBtn\_Click" Width="56" Height="56" Padding="0" HorizontalAlignment="Center" Background="Transparent" BorderThickness="0" CornerRadius="12">
+
+&#x20;           <ToolTipService.ToolTip><ToolTip Content="Guide — help, keyboard shortcuts, and getting started"/></ToolTipService.ToolTip>
+
+&#x20;           <StackPanel Spacing="3" HorizontalAlignment="Center">
+
+&#x20;             <FontIcon Glyph="\&#xE897;" FontSize="20" Foreground="#CDD6F4"/>
+
+&#x20;             <TextBlock Text="Guide"    FontSize="8" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;           </StackPanel>
+
+&#x20;         </Button>
+
+&#x20;       </StackPanel>
+
+
+
+&#x20;       <!-- Settings -->
+
+&#x20;       <Button Grid.Row="2" x:Name="BtnSettings" Tag="Settings" Click="NavBtn\_Click"
+
+&#x20;               Width="56" Height="56" Padding="0" HorizontalAlignment="Center"
+
+&#x20;               Margin="0,0,0,16" Background="Transparent" BorderThickness="0" CornerRadius="12">
+
+&#x20;         <ToolTipService.ToolTip><ToolTip Content="Settings — configure Ollama, defaults and theme"/></ToolTipService.ToolTip>
+
+&#x20;         <StackPanel Spacing="3" HorizontalAlignment="Center">
+
+&#x20;           <FontIcon Glyph="\&#xE713;" FontSize="20" Foreground="#CDD6F4"/>
+
+&#x20;           <TextBlock Text="Settings" FontSize="8" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Button>
+
+&#x20;     </Grid>
+
+&#x20;   </Border>
+
+
+
+&#x20;   <Frame x:Name="ContentFrame" Grid.Column="1" Background="#1E1E2E"/>
+
+&#x20; </Grid>
+
+</Window>
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\MainWindow.xaml.cs" @'
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Microsoft.UI.Xaml;
+
+using Microsoft.UI.Xaml.Controls;
+
+using Microsoft.UI.Xaml.Media;
+
+using OllamaHub.Services;
+
+using OllamaHub.ViewModels;
+
+using OllamaHub.Views;
+
+using Windows.UI;
+
+namespace OllamaHub;
+
+public sealed partial class MainWindow : Window
+
+{
+
+&#x20;   private readonly MainViewModel \_vm;
+
+&#x20;   private readonly ThemeService  \_theme;
+
+&#x20;   private Button? \_activeBtn;
+
+&#x20;   public MainWindow()
+
+&#x20;   {
+
+&#x20;       InitializeComponent();
+
+&#x20;       \_vm    = App.Services.GetRequiredService<MainViewModel>();
+
+&#x20;       \_theme = App.Services.GetRequiredService<ThemeService>();
+
+&#x20;       \_vm.PropertyChanged += (\_, e) => { if (e.PropertyName == nameof(MainViewModel.OllamaOnline)) UpdateStatus(); };
+
+&#x20;       UpdateStatus(); \_theme.Apply(this);
+
+&#x20;       ContentFrame.Navigate(typeof(ChatPage)); SetActive(BtnChat);
+
+&#x20;   }
+
+&#x20;   private void UpdateStatus()
+
+&#x20;   {
+
+&#x20;       DispatcherQueue.TryEnqueue(() =>
+
+&#x20;       {
+
+&#x20;           StatusDot.Fill   = new SolidColorBrush(\_vm.OllamaOnline ? Color.FromArgb(255,74,222,128) : Color.FromArgb(255,248,113,113));
+
+&#x20;           StatusLabel.Text = \_vm.OllamaOnline ? "Online" : "Offline";
+
+&#x20;       });
+
+&#x20;   }
+
+&#x20;   private void NavBtn\_Click(object sender, RoutedEventArgs e)
+
+&#x20;   {
+
+&#x20;       if (sender is not Button btn) return;
+
+&#x20;       SetActive(btn);
+
+&#x20;       ContentFrame.Navigate(btn.Tag?.ToString() switch
+
+&#x20;       {
+
+&#x20;           "Chat"        => typeof(ChatPage),
+
+&#x20;           "Copilot"     => typeof(CopilotPage),
+
+&#x20;           "Models"      => typeof(ModelsPage),
+
+&#x20;           "History"     => typeof(HistoryPage),
+
+&#x20;           "Personas"    => typeof(PersonasPage),
+
+&#x20;           "Prompts"     => typeof(PromptLibraryPage),
+
+&#x20;           "Chain"       => typeof(ChainPage),
+
+&#x20;           "Compare"     => typeof(ModelComparePage),
+
+&#x20;           "Performance" => typeof(PerformancePage),
+
+&#x20;           "Terminal"    => typeof(TerminalPage),
+
+&#x20;           "Guide"       => typeof(GuidePage),
+
+&#x20;           "Settings"    => typeof(SettingsPage),
+
+&#x20;           \_             => typeof(ChatPage)
+
+&#x20;       });
+
+&#x20;   }
+
+&#x20;   private void SetActive(Button btn)
+
+&#x20;   {
+
+&#x20;       if (\_activeBtn != null) \_activeBtn.Background = new SolidColorBrush(Color.FromArgb(0,0,0,0));
+
+&#x20;       \_activeBtn = btn;
+
+&#x20;       btn.Background = new SolidColorBrush(Color.FromArgb(50, 124, 106, 247));
+
+&#x20;   }
+
+}
+
+'@ -Encoding UTF8
+
+Write-Ok "MainWindow.xaml + MainWindow.xaml.cs"
+
+
+
+\# ── VIEWS — ChatPage ──────────────────────────────────────────────────────────
+
+Write-Step "Writing Views\\ChatPage.xaml"
+
+Set-Content "$root\\Views\\ChatPage.xaml" @'
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Page x:Class="OllamaHub.Views.ChatPage"
+
+&#x20;     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+
+&#x20;     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+&#x20;     xmlns:models="using:OllamaHub.Models"
+
+&#x20;     Background="#1E1E2E">
+
+&#x20; <Grid>
+
+&#x20;   <Grid.ColumnDefinitions>
+
+&#x20;     <ColumnDefinition Width="260"/>
+
+&#x20;     <ColumnDefinition Width="\*"/>
+
+&#x20;   </Grid.ColumnDefinitions>
+
+
+
+&#x20;   <!-- SIDEBAR -->
+
+&#x20;   <Border Grid.Column="0" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,1,0">
+
+&#x20;     <Grid>
+
+&#x20;       <Grid.RowDefinitions>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;         <RowDefinition Height="\*"/>
+
+&#x20;       </Grid.RowDefinitions>
+
+&#x20;       <StackPanel Grid.Row="0" Margin="12,14,12,10" Spacing="5">
+
+&#x20;         <TextBlock Text="MODEL" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+&#x20;         <ComboBox x:Name="ModelComboBox" ItemsSource="{x:Bind ViewModel.AvailableModels}"
+
+&#x20;                   DisplayMemberPath="Name" SelectedIndex="0" HorizontalAlignment="Stretch"
+
+&#x20;                   Background="#313244" BorderBrush="#45475A" PlaceholderText="Select model...">
+
+&#x20;           <ToolTipService.ToolTip><ToolTip Content="Choose which Ollama model to use for this conversation"/></ToolTipService.ToolTip>
+
+&#x20;         </ComboBox>
+
+&#x20;       </StackPanel>
+
+&#x20;       <!-- Persona badge -->
+
+&#x20;       <Border Grid.Row="1" x:Name="PersonaBadge" Margin="12,0,12,8" CornerRadius="8" Padding="10,6"
+
+&#x20;               Background="#313244" Visibility="Collapsed">
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="8">
+
+&#x20;           <FontIcon x:Name="PersonaIcon" Glyph="\&#xE716;" FontSize="14" Foreground="#7C6AF7"/>
+
+&#x20;           <TextBlock x:Name="PersonaName" Text="Persona" FontSize="12" FontWeight="SemiBold" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+
+&#x20;           <Button Click="ClearPersona\_Click" Background="Transparent" BorderThickness="0" Padding="0" Width="16" Height="16">
+
+&#x20;             <FontIcon Glyph="\&#xE711;" FontSize="10" Foreground="#6C7086"/>
+
+&#x20;           </Button>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Border>
+
+&#x20;       <Button Grid.Row="2" Click="NewChat\_Click" HorizontalAlignment="Stretch" Margin="12,0,12,8"
+
+&#x20;               CornerRadius="10" Height="36" BorderThickness="0">
+
+&#x20;         <Button.Background>
+
+&#x20;           <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+
+&#x20;             <GradientStop Color="#7C6AF7" Offset="0"/>
+
+&#x20;             <GradientStop Color="#60A5FA" Offset="1"/>
+
+&#x20;           </LinearGradientBrush>
+
+&#x20;         </Button.Background>
+
+&#x20;         <ToolTipService.ToolTip><ToolTip Content="Start a new conversation (Ctrl+N)"/></ToolTipService.ToolTip>
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="8">
+
+&#x20;           <FontIcon Glyph="\&#xE710;" FontSize="13" Foreground="White"/>
+
+&#x20;           <TextBlock Text="New Chat" Foreground="White" FontWeight="SemiBold" FontSize="13"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Button>
+
+&#x20;       <TextBlock Grid.Row="3" Text="RECENT" FontSize="10" FontWeight="SemiBold"
+
+&#x20;                  CharacterSpacing="120" Foreground="#6C7086" Margin="16,4,12,6"/>
+
+&#x20;       <ListView Grid.Row="4" x:Name="SessionList" ItemsSource="{x:Bind ViewModel.ChatSessions}"
+
+&#x20;                 SelectionChanged="SessionList\_SelectionChanged" Background="Transparent" Margin="6,0,6,8">
+
+&#x20;         <ListView.ItemTemplate>
+
+&#x20;           <DataTemplate x:DataType="models:ChatSession">
+
+&#x20;             <Border Padding="10,8" CornerRadius="8">
+
+&#x20;               <StackPanel Spacing="3">
+
+&#x20;                 <TextBlock Text="{x:Bind Title}" FontSize="13" FontWeight="SemiBold" Foreground="#CDD6F4" TextTrimming="CharacterEllipsis"/>
+
+&#x20;                 <TextBlock Text="{x:Bind ModelName}" FontSize="11" Foreground="#6C7086" TextTrimming="CharacterEllipsis"/>
+
+&#x20;               </StackPanel>
+
+&#x20;             </Border>
+
+&#x20;           </DataTemplate>
+
+&#x20;         </ListView.ItemTemplate>
+
+&#x20;         <ListView.ItemContainerStyle>
+
+&#x20;           <Style TargetType="ListViewItem">
+
+&#x20;             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+
+&#x20;             <Setter Property="CornerRadius" Value="8"/>
+
+&#x20;             <Setter Property="Margin" Value="0,1"/>
+
+&#x20;             <Setter Property="Padding" Value="0"/>
+
+&#x20;           </Style>
+
+&#x20;         </ListView.ItemContainerStyle>
+
+&#x20;       </ListView>
+
+&#x20;     </Grid>
+
+&#x20;   </Border>
+
+
+
+&#x20;   <!-- MAIN AREA -->
+
+&#x20;   <Grid Grid.Column="1">
+
+&#x20;     <Grid.RowDefinitions>
+
+&#x20;       <RowDefinition Height="Auto"/>
+
+&#x20;       <RowDefinition Height="\*"/>
+
+&#x20;       <RowDefinition Height="Auto"/>
+
+&#x20;       <RowDefinition Height="Auto"/>
+
+&#x20;     </Grid.RowDefinitions>
+
+
+
+&#x20;     <!-- Top bar -->
+
+&#x20;     <Border Grid.Row="0" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,0,1" Padding="20,10">
+
+&#x20;       <Grid>
+
+&#x20;         <Grid.ColumnDefinitions>
+
+&#x20;           <ColumnDefinition Width="\*"/>
+
+&#x20;           <ColumnDefinition Width="Auto"/>
+
+&#x20;         </Grid.ColumnDefinitions>
+
+&#x20;         <StackPanel Grid.Column="0" Spacing="4">
+
+&#x20;           <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;             <TextBlock Text="Context" FontSize="11" Foreground="#6C7086" VerticalAlignment="Center"/>
+
+&#x20;             <TextBlock Text="{x:Bind ViewModel.ContextTokens, Mode=OneWay}" FontSize="11" Foreground="#9399B2" VerticalAlignment="Center"/>
+
+&#x20;             <TextBlock Text="/" FontSize="11" Foreground="#45475A" VerticalAlignment="Center"/>
+
+&#x20;             <TextBlock Text="{x:Bind ViewModel.MaxContextTokens, Mode=OneWay}" FontSize="11" Foreground="#6C7086" VerticalAlignment="Center"/>
+
+&#x20;             <TextBlock Text="tokens" FontSize="11" Foreground="#6C7086" VerticalAlignment="Center"/>
+
+&#x20;             <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}" FontSize="11" Foreground="#6C7086" VerticalAlignment="Center" Margin="12,0,0,0"/>
+
+&#x20;           </StackPanel>
+
+&#x20;           <Border Background="#313244" CornerRadius="3" Height="4" Width="200" HorizontalAlignment="Left">
+
+&#x20;             <Border x:Name="ContextBar" CornerRadius="3" Height="4" HorizontalAlignment="Left" Width="0">
+
+&#x20;               <Border.Background><SolidColorBrush x:Name="ContextBarBrush" Color="#4ADE80"/></Border.Background>
+
+&#x20;             </Border>
+
+&#x20;           </Border>
+
+&#x20;         </StackPanel>
+
+&#x20;         <DropDownButton Grid.Column="1" CornerRadius="8" Background="#313244" BorderBrush="#45475A" Foreground="#CDD6F4" FontSize="12">
+
+&#x20;           <ToolTipService.ToolTip><ToolTip Content="Share or export this conversation"/></ToolTipService.ToolTip>
+
+&#x20;           <StackPanel Orientation="Horizontal" Spacing="6">
+
+&#x20;             <FontIcon Glyph="\&#xE72D;" FontSize="12" Foreground="#7C6AF7"/>
+
+&#x20;             <TextBlock Text="Share"/>
+
+&#x20;           </StackPanel>
+
+&#x20;           <DropDownButton.Flyout>
+
+&#x20;             <MenuFlyout>
+
+&#x20;               <MenuFlyoutItem Text="Copy to clipboard" Click="CopyClipboard\_Click"><MenuFlyoutItem.Icon><FontIcon Glyph="\&#xE8C8;"/></MenuFlyoutItem.Icon></MenuFlyoutItem>
+
+&#x20;               <MenuFlyoutSeparator/>
+
+&#x20;               <MenuFlyoutItem Text="Save as Markdown" Click="ExportMd\_Click"><MenuFlyoutItem.Icon><FontIcon Glyph="\&#xE8A5;"/></MenuFlyoutItem.Icon></MenuFlyoutItem>
+
+&#x20;               <MenuFlyoutItem Text="Save as HTML"     Click="ExportHtml\_Click"><MenuFlyoutItem.Icon><FontIcon Glyph="\&#xF6FA;"/></MenuFlyoutItem.Icon></MenuFlyoutItem>
+
+&#x20;               <MenuFlyoutItem Text="Save as Text"     Click="ExportTxt\_Click"><MenuFlyoutItem.Icon><FontIcon Glyph="\&#xE8A4;"/></MenuFlyoutItem.Icon></MenuFlyoutItem>
+
+&#x20;             </MenuFlyout>
+
+&#x20;           </DropDownButton.Flyout>
+
+&#x20;         </DropDownButton>
+
+&#x20;       </Grid>
+
+&#x20;     </Border>
+
+
+
+&#x20;     <!-- Messages -->
+
+&#x20;     <ScrollViewer Grid.Row="1" x:Name="MessagesScroll" VerticalScrollBarVisibility="Auto" Padding="28,20,28,12">
+
+&#x20;       <StackPanel Spacing="20">
+
+&#x20;         <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" Margin="0,60,0,0" Spacing="16">
+
+&#x20;           <Border Width="80" Height="80" CornerRadius="24" HorizontalAlignment="Center">
+
+&#x20;             <Border.Background>
+
+&#x20;               <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+
+&#x20;                 <GradientStop Color="#7C6AF7" Offset="0"/>
+
+&#x20;                 <GradientStop Color="#60A5FA" Offset="1"/>
+
+&#x20;               </LinearGradientBrush>
+
+&#x20;             </Border.Background>
+
+&#x20;             <FontIcon Glyph="\&#xE99A;" FontSize="36" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+&#x20;           </Border>
+
+&#x20;           <TextBlock Text="OllamaHub" FontSize="32" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center"/>
+
+&#x20;           <TextBlock Text="Type / for prompt templates · Select a persona · Or just start chatting"
+
+&#x20;                      FontSize="13" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;           <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,8,0,0">
+
+&#x20;             <Border Background="#313244" BorderBrush="#45475A" BorderThickness="1" CornerRadius="10" Padding="14,10">
+
+&#x20;               <StackPanel Spacing="6" HorizontalAlignment="Center">
+
+&#x20;                 <FontIcon Glyph="\&#xE943;" FontSize="18" Foreground="#7C6AF7" HorizontalAlignment="Center"/>
+
+&#x20;                 <TextBlock Text="CoPilot" FontSize="11" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;               </StackPanel>
+
+&#x20;             </Border>
+
+&#x20;             <Border Background="#313244" BorderBrush="#45475A" BorderThickness="1" CornerRadius="10" Padding="14,10">
+
+&#x20;               <StackPanel Spacing="6" HorizontalAlignment="Center">
+
+&#x20;                 <FontIcon Glyph="\&#xE8EF;" FontSize="18" Foreground="#60A5FA" HorizontalAlignment="Center"/>
+
+&#x20;                 <TextBlock Text="Chain" FontSize="11" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;               </StackPanel>
+
+&#x20;             </Border>
+
+&#x20;             <Border Background="#313244" BorderBrush="#45475A" BorderThickness="1" CornerRadius="10" Padding="14,10">
+
+&#x20;               <StackPanel Spacing="6" HorizontalAlignment="Center">
+
+&#x20;                 <FontIcon Glyph="\&#xE716;" FontSize="18" Foreground="#F472B6" HorizontalAlignment="Center"/>
+
+&#x20;                 <TextBlock Text="Personas" FontSize="11" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;               </StackPanel>
+
+&#x20;             </Border>
+
+&#x20;           </StackPanel>
+
+&#x20;         </StackPanel>
+
+
+
+&#x20;         <ItemsControl x:Name="MessagesList" ItemsSource="{x:Bind ViewModel.Messages, Mode=OneWay}">
+
+&#x20;           <ItemsControl.ItemTemplate>
+
+&#x20;             <DataTemplate x:DataType="models:ChatMessage">
+
+&#x20;               <Grid Margin="0,6">
+
+&#x20;                 <Border Visibility="{x:Bind IsUser, Converter={StaticResource BoolToVisibilityConverter}}"
+
+&#x20;                         HorizontalAlignment="Right" MaxWidth="620"
+
+&#x20;                         CornerRadius="18,18,4,18" Padding="16,12" Margin="100,0,0,0">
+
+&#x20;                   <Border.Background>
+
+&#x20;                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+
+&#x20;                       <GradientStop Color="#7C6AF7" Offset="0"/>
+
+&#x20;                       <GradientStop Color="#60A5FA" Offset="1"/>
+
+&#x20;                     </LinearGradientBrush>
+
+&#x20;                   </Border.Background>
+
+&#x20;                   <TextBlock Text="{x:Bind Content}" Foreground="White" TextWrapping="Wrap"
+
+&#x20;                              FontSize="14" IsTextSelectionEnabled="True" LineHeight="22"/>
+
+&#x20;                 </Border>
+
+&#x20;                 <Border Visibility="{x:Bind IsAssistant, Converter={StaticResource BoolToVisibilityConverter}}"
+
+&#x20;                         HorizontalAlignment="Left" MaxWidth="720"
+
+&#x20;                         Background="#313244" BorderBrush="#45475A" BorderThickness="1"
+
+&#x20;                         CornerRadius="18,18,18,4" Padding="18,14" Margin="0,0,100,0">
+
+&#x20;                   <StackPanel Spacing="10">
+
+&#x20;                     <StackPanel Orientation="Horizontal" Spacing="6">
+
+&#x20;                       <Border Background="#1E1E2E" CornerRadius="6" Padding="6,3">
+
+&#x20;                         <StackPanel Orientation="Horizontal" Spacing="5">
+
+&#x20;                           <FontIcon Glyph="\&#xE99A;" FontSize="10" Foreground="#7C6AF7"/>
+
+&#x20;                           <TextBlock Text="{x:Bind ModelName}" FontSize="11" FontWeight="SemiBold" Foreground="#7C6AF7"/>
+
+&#x20;                         </StackPanel>
+
+&#x20;                       </Border>
+
+&#x20;                     </StackPanel>
+
+&#x20;                     <TextBlock Text="{x:Bind Content}" TextWrapping="Wrap" FontSize="14"
+
+&#x20;                                Foreground="#CDD6F4" IsTextSelectionEnabled="True" LineHeight="22"/>
+
+&#x20;                     <ProgressRing IsActive="{x:Bind IsStreaming}" Width="18" Height="18" Foreground="#7C6AF7"
+
+&#x20;                                   Visibility="{x:Bind IsStreaming, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+&#x20;                   </StackPanel>
+
+&#x20;                 </Border>
+
+&#x20;               </Grid>
+
+&#x20;             </DataTemplate>
+
+&#x20;           </ItemsControl.ItemTemplate>
+
+&#x20;         </ItemsControl>
+
+&#x20;       </StackPanel>
+
+&#x20;     </ScrollViewer>
+
+
+
+&#x20;     <!-- Slash popup -->
+
+&#x20;     <Border Grid.Row="2" x:Name="SlashPopup" Visibility="Collapsed"
+
+&#x20;             Background="#313244" BorderBrush="#7C6AF7" BorderThickness="1"
+
+&#x20;             CornerRadius="12" Margin="20,0,20,4" Padding="8">
+
+&#x20;       <ListView x:Name="SlashList" MaxHeight="220" Background="Transparent" SelectionChanged="SlashList\_SelectionChanged">
+
+&#x20;         <ListView.ItemTemplate>
+
+&#x20;           <DataTemplate>
+
+&#x20;             <Grid ColumnSpacing="10" Padding="6,4">
+
+&#x20;               <Grid.ColumnDefinitions>
+
+&#x20;                 <ColumnDefinition Width="110"/>
+
+&#x20;                 <ColumnDefinition Width="\*"/>
+
+&#x20;                 <ColumnDefinition Width="\*"/>
+
+&#x20;               </Grid.ColumnDefinitions>
+
+&#x20;               <TextBlock Grid.Column="0" Text="{Binding Trigger}" FontSize="13" FontWeight="SemiBold" Foreground="#7C6AF7" FontFamily="Cascadia Code,Consolas,monospace"/>
+
+&#x20;               <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13" Foreground="#CDD6F4"/>
+
+&#x20;               <TextBlock Grid.Column="2" Text="{Binding Description}" FontSize="11" Foreground="#6C7086" TextTrimming="CharacterEllipsis"/>
+
+&#x20;             </Grid>
+
+&#x20;           </DataTemplate>
+
+&#x20;         </ListView.ItemTemplate>
+
+&#x20;         <ListView.ItemContainerStyle>
+
+&#x20;           <Style TargetType="ListViewItem">
+
+&#x20;             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+
+&#x20;             <Setter Property="CornerRadius" Value="6"/>
+
+&#x20;             <Setter Property="Padding" Value="0"/>
+
+&#x20;           </Style>
+
+&#x20;         </ListView.ItemContainerStyle>
+
+&#x20;       </ListView>
+
+&#x20;     </Border>
+
+
+
+&#x20;     <!-- Input bar -->
+
+&#x20;     <Border Grid.Row="3" Background="#181825" BorderBrush="#313244" BorderThickness="0,1,0,0" Padding="20,12,20,18">
+
+&#x20;       <Grid ColumnSpacing="10">
+
+&#x20;         <Grid.ColumnDefinitions>
+
+&#x20;           <ColumnDefinition Width="Auto"/>
+
+&#x20;           <ColumnDefinition Width="\*"/>
+
+&#x20;           <ColumnDefinition Width="Auto"/>
+
+&#x20;           <ColumnDefinition Width="Auto"/>
+
+&#x20;         </Grid.ColumnDefinitions>
+
+&#x20;         <Button Grid.Column="0" x:Name="VoiceBtn" Click="VoiceBtn\_Click"
+
+&#x20;                 Width="44" Height="44" CornerRadius="12" Background="#313244" BorderBrush="#45475A" BorderThickness="1">
+
+&#x20;           <ToolTipService.ToolTip><ToolTip Content="Voice input — click to start microphone (purple = listening)"/></ToolTipService.ToolTip>
+
+&#x20;           <FontIcon x:Name="VoiceIcon" Glyph="\&#xE720;" FontSize="18" Foreground="#6C7086"/>
+
+&#x20;         </Button>
+
+&#x20;         <Border Grid.Column="1" Background="#313244" BorderBrush="#45475A" BorderThickness="1" CornerRadius="14">
+
+&#x20;           <TextBox x:Name="InputBox"
+
+&#x20;                    Text="{x:Bind ViewModel.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+
+&#x20;                    PlaceholderText="Message OllamaHub...  (/ for commands, Enter to send)"
+
+&#x20;                    AcceptsReturn="False" MaxHeight="120" TextWrapping="Wrap"
+
+&#x20;                    BorderThickness="0" Background="Transparent" Foreground="#CDD6F4"
+
+&#x20;                    Padding="16,12" FontSize="14"
+
+&#x20;                    KeyDown="InputBox\_KeyDown" TextChanged="InputBox\_TextChanged" VerticalAlignment="Center"/>
+
+&#x20;         </Border>
+
+&#x20;         <Button Grid.Column="2" x:Name="TtsBtn" Click="TtsBtn\_Click"
+
+&#x20;                 Width="44" Height="44" CornerRadius="12" Background="#313244" BorderBrush="#45475A" BorderThickness="1">
+
+&#x20;           <ToolTipService.ToolTip><ToolTip Content="Text-to-speech — model reads responses aloud (purple = on)"/></ToolTipService.ToolTip>
+
+&#x20;           <FontIcon x:Name="TtsIcon" Glyph="\&#xE995;" FontSize="18" Foreground="#6C7086"/>
+
+&#x20;         </Button>
+
+&#x20;         <Button Grid.Column="3" x:Name="SendButton" Click="SendButton\_Click"
+
+&#x20;                 Width="50" Height="50" CornerRadius="14" BorderThickness="0">
+
+&#x20;           <Button.Background>
+
+&#x20;             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+
+&#x20;               <GradientStop Color="#7C6AF7" Offset="0"/>
+
+&#x20;               <GradientStop Color="#60A5FA" Offset="1"/>
+
+&#x20;             </LinearGradientBrush>
+
+&#x20;           </Button.Background>
+
+&#x20;           <ToolTipService.ToolTip><ToolTip Content="Send message (Enter) — click again to stop generation"/></ToolTipService.ToolTip>
+
+&#x20;           <FontIcon x:Name="SendIcon" Glyph="\&#xE724;" FontSize="18" Foreground="White"/>
+
+&#x20;         </Button>
+
+&#x20;       </Grid>
+
+&#x20;     </Border>
+
+&#x20;   </Grid>
+
+&#x20; </Grid>
+
+</Page>
+
+'@ -Encoding UTF8
+
+Write-Ok "Views\\ChatPage.xaml"
+
+
+
+Write-Step "Writing Views\\ChatPage.xaml.cs"
+
+Set-Content "$root\\Views\\ChatPage.xaml.cs" @'
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Microsoft.UI.Xaml;
+
+using Microsoft.UI.Xaml.Controls;
+
+using Microsoft.UI.Xaml.Input;
+
+using Microsoft.UI.Xaml.Media;
+
+using OllamaHub.Models;
+
+using OllamaHub.Services;
+
+using OllamaHub.ViewModels;
+
+using Windows.System;
+
+using Windows.UI;
+
+namespace OllamaHub.Views;
+
+public sealed partial class ChatPage : Page
+
+{
+
+&#x20;   public ChatViewModel ViewModel { get; }
+
+&#x20;   private readonly ShareService        \_share;
+
+&#x20;   private readonly VoiceService        \_voice;
+
+&#x20;   private readonly SlashCommandService \_slash;
+
+&#x20;   private bool \_ttsEnabled, \_slashVisible;
+
+&#x20;   public static string? PendingPrompt  { get; set; }
+
+&#x20;   public static Persona? PendingPersona{ get; set; }
+
+&#x20;   public ChatPage()
+
+&#x20;   {
+
+&#x20;       ViewModel = App.Services.GetRequiredService<ChatViewModel>();
+
+&#x20;       \_share    = App.Services.GetRequiredService<ShareService>();
+
+&#x20;       \_voice    = App.Services.GetRequiredService<VoiceService>();
+
+&#x20;       \_slash    = App.Services.GetRequiredService<SlashCommandService>();
+
+&#x20;       InitializeComponent();
+
+&#x20;       \_voice.SpeechRecognized += (\_, text) => DispatcherQueue.TryEnqueue(() => ViewModel.InputText += (ViewModel.InputText.Length > 0 ? " " : "") + text);
+
+&#x20;       \_voice.ListeningStarted += (\_, \_) => DispatcherQueue.TryEnqueue(() => { VoiceIcon.Foreground=new SolidColorBrush(Color.FromArgb(255,124,106,247)); VoiceBtn.Background=new SolidColorBrush(Color.FromArgb(40,124,106,247)); });
+
+&#x20;       \_voice.ListeningStopped += (\_, \_) => DispatcherQueue.TryEnqueue(() => { VoiceIcon.Foreground=new SolidColorBrush(Color.FromArgb(255,108,112,134)); VoiceBtn.Background=new SolidColorBrush(Color.FromArgb(255,49,50,68)); });
+
+&#x20;       \_voice.ErrorOccurred += async (\_, msg) =>
+
+&#x20;       {
+
+&#x20;           await DispatcherQueue.TryEnqueue(async () =>
+
+&#x20;           {
+
+&#x20;               var dlg = new ContentDialog { Title="Voice error", Content=msg, CloseButtonText="OK", XamlRoot=XamlRoot };
+
+&#x20;               await dlg.ShowAsync();
+
+&#x20;           });
+
+&#x20;       };
+
+&#x20;       ViewModel.PropertyChanged += (\_, e) => { if (e.PropertyName == nameof(ViewModel.ContextPercent)) UpdateContextBar(); };
+
+&#x20;       ViewModel.Messages.CollectionChanged += (\_, \_) => ScrollToBottom();
+
+&#x20;       Loaded += (\_, \_) =>
+
+&#x20;       {
+
+&#x20;           if (PendingPersona != null) { ApplyPersona(PendingPersona); PendingPersona = null; }
+
+&#x20;           if (!string.IsNullOrEmpty(PendingPrompt)) { ViewModel.InputText = PendingPrompt; PendingPrompt = null; }
+
+&#x20;           UpdateContextBar(); InputBox.Focus(FocusState.Programmatic);
+
+&#x20;           ModelComboBox.SelectionChanged += (s, e) => { if (ModelComboBox.SelectedItem is OllamaModelInfo m) ViewModel.SelectedModel = m.Name; };
+
+&#x20;       };
+
+&#x20;   }
+
+&#x20;   private void ApplyPersona(Persona p)
+
+&#x20;   {
+
+&#x20;       ViewModel.ActivPersona = p;
+
+&#x20;       PersonaBadge.Visibility = Visibility.Visible;
+
+&#x20;       PersonaName.Text = p.Name;
+
+&#x20;       PersonaIcon.Foreground = new SolidColorBrush(Color.FromArgb(255,
+
+&#x20;           Convert.ToByte(p.AvatarColor\[1..3], 16),
+
+&#x20;           Convert.ToByte(p.AvatarColor\[3..5], 16),
+
+&#x20;           Convert.ToByte(p.AvatarColor\[5..7], 16)));
+
+&#x20;   }
+
+&#x20;   private void ClearPersona\_Click(object s, RoutedEventArgs e) { ViewModel.ActivPersona = null; PersonaBadge.Visibility = Visibility.Collapsed; }
+
+&#x20;   private void UpdateContextBar()
+
+&#x20;   {
+
+&#x20;       DispatcherQueue.TryEnqueue(() =>
+
+&#x20;       {
+
+&#x20;           ContextBar.Width = 200.0 \* ViewModel.ContextPercent / 100.0;
+
+&#x20;           ContextBarBrush.Color = ViewModel.ContextColor switch
+
+&#x20;           {
+
+&#x20;               "#FB923C" => Color.FromArgb(255,251,146,60),
+
+&#x20;               "#F87171" => Color.FromArgb(255,248,113,113),
+
+&#x20;               \_         => Color.FromArgb(255,74,222,128)
+
+&#x20;           };
+
+&#x20;       });
+
+&#x20;   }
+
+&#x20;   private void ScrollToBottom() { DispatcherQueue.TryEnqueue(() => { MessagesScroll.UpdateLayout(); MessagesScroll.ScrollToVerticalOffset(MessagesScroll.ExtentHeight); }); }
+
+&#x20;   private void NewChat\_Click(object s, RoutedEventArgs e) => ViewModel.NewChatCommand.Execute(null);
+
+&#x20;   private void SessionList\_SelectionChanged(object s, SelectionChangedEventArgs e) { if (SessionList.SelectedItem is ChatSession session) ViewModel.OpenSessionCommand.Execute(session); }
+
+&#x20;   private void InputBox\_KeyDown(object sender, KeyRoutedEventArgs e)
+
+&#x20;   {
+
+&#x20;       if (e.Key == VirtualKey.Enter)
+
+&#x20;       {
+
+&#x20;           if (\_slashVisible \&\& SlashList.SelectedItem != null) { ApplySlashCommand(SlashList.SelectedItem); e.Handled=true; return; }
+
+&#x20;           var ctrl = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);
+
+&#x20;           if (!ctrl.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down)) { HideSlash(); SendButton\_Click(sender, e); e.Handled=true; }
+
+&#x20;       }
+
+&#x20;       else if (e.Key==VirtualKey.Escape) HideSlash();
+
+&#x20;       else if (e.Key==VirtualKey.Up   \&\& \_slashVisible) { if(SlashList.SelectedIndex>0) SlashList.SelectedIndex--; e.Handled=true; }
+
+&#x20;       else if (e.Key==VirtualKey.Down \&\& \_slashVisible) { if(SlashList.SelectedIndex<SlashList.Items.Count-1) SlashList.SelectedIndex++; e.Handled=true; }
+
+&#x20;   }
+
+&#x20;   private void InputBox\_TextChanged(object sender, TextChangedEventArgs e)
+
+&#x20;   {
+
+&#x20;       var text = ViewModel.InputText;
+
+&#x20;       if (text.StartsWith("/")) { var results=\_slash.Search(text).ToList(); if(results.Any()){SlashList.ItemsSource=results;SlashList.SelectedIndex=0;SlashPopup.Visibility=Visibility.Visible;\_slashVisible=true;return;} }
+
+&#x20;       HideSlash();
+
+&#x20;   }
+
+&#x20;   private void SlashList\_SelectionChanged(object s, SelectionChangedEventArgs e) { }
+
+&#x20;   private void ApplySlashCommand(object item) { if(item is SlashCommand cmd){ViewModel.InputText=cmd.Content;HideSlash();InputBox.Focus(FocusState.Programmatic);} }
+
+&#x20;   private void HideSlash() { SlashPopup.Visibility=Visibility.Collapsed; \_slashVisible=false; }
+
+&#x20;   private void SendButton\_Click(object sender, RoutedEventArgs e)
+
+&#x20;   {
+
+&#x20;       if (ViewModel.IsGenerating) { \_voice.StopSpeaking(); ViewModel.StopGenerationCommand.Execute(null); SendIcon.Glyph="\\uE724"; }
+
+&#x20;       else { ViewModel.SendMessageCommand.Execute(null); SendIcon.Glyph="\\uE71A"; ViewModel.PropertyChanged+=OnGenChanged; }
+
+&#x20;   }
+
+&#x20;   private void OnGenChanged(object? s, System.ComponentModel.PropertyChangedEventArgs e)
+
+&#x20;   {
+
+&#x20;       if (e.PropertyName!=nameof(ViewModel.IsGenerating)) return;
+
+&#x20;       if (!ViewModel.IsGenerating)
+
+&#x20;       {
+
+&#x20;           DispatcherQueue.TryEnqueue(()=>SendIcon.Glyph="\\uE724"); ViewModel.PropertyChanged-=OnGenChanged;
+
+&#x20;           if (\_ttsEnabled \&\& ViewModel.Messages.LastOrDefault() is {Role:"assistant"} last) \_voice.Speak(last.Content);
+
+&#x20;       }
+
+&#x20;   }
+
+&#x20;   private void VoiceBtn\_Click(object s, RoutedEventArgs e) { if(\_voice.IsListening) \_voice.StopListening(); else \_voice.StartListening(); }
+
+&#x20;   private void TtsBtn\_Click(object s, RoutedEventArgs e) { \_ttsEnabled=!\_ttsEnabled; \_voice.VoiceOutputEnabled=\_ttsEnabled; TtsIcon.Foreground=new SolidColorBrush(\_ttsEnabled?Color.FromArgb(255,124,106,247):Color.FromArgb(255,108,112,134)); TtsBtn.Background=new SolidColorBrush(\_ttsEnabled?Color.FromArgb(40,124,106,247):Color.FromArgb(255,49,50,68)); }
+
+&#x20;   private void CopyClipboard\_Click(object s, RoutedEventArgs e) { if(ViewModel.CurrentSession!=null) \_share.CopyToClipboard(ViewModel.CurrentSession); }
+
+&#x20;   private async void ExportMd\_Click(object s, RoutedEventArgs e)   { if(ViewModel.CurrentSession!=null) await \_share.SaveMarkdownAsync(ViewModel.CurrentSession); }
+
+&#x20;   private async void ExportHtml\_Click(object s, RoutedEventArgs e) { if(ViewModel.CurrentSession!=null) await \_share.SaveHtmlAsync(ViewModel.CurrentSession); }
+
+&#x20;   private async void ExportTxt\_Click(object s, RoutedEventArgs e)  { if(ViewModel.CurrentSession!=null) await \_share.SaveTextAsync(ViewModel.CurrentSession); }
+
+}
+
+'@ -Encoding UTF8
+
+Write-Ok "Views\\ChatPage.xaml.cs"
+
+
+
+\# ── CopilotPage ───────────────────────────────────────────────────────────────
+
+Write-Step "Writing Views\\CopilotPage.xaml"
+
+Set-Content "$root\\Views\\CopilotPage.xaml" @'
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Page x:Class="OllamaHub.Views.CopilotPage"
+
+&#x20;     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+
+&#x20;     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+&#x20;     xmlns:vm="using:OllamaHub.ViewModels"
+
+&#x20;     Background="#1E1E2E">
+
+&#x20; <Grid>
+
+&#x20;   <Grid.ColumnDefinitions>
+
+&#x20;     <ColumnDefinition Width="\*"/>
+
+&#x20;     <ColumnDefinition Width="360"/>
+
+&#x20;   </Grid.ColumnDefinitions>
+
+
+
+&#x20;   <!-- LEFT: Code Input + Actions -->
+
+&#x20;   <Grid Grid.Column="0" Margin="0,0,1,0">
+
+&#x20;     <Grid.RowDefinitions>
+
+&#x20;       <RowDefinition Height="Auto"/>
+
+&#x20;       <RowDefinition Height="Auto"/>
+
+&#x20;       <RowDefinition Height="\*"/>
+
+&#x20;       <RowDefinition Height="Auto"/>
+
+&#x20;     </Grid.RowDefinitions>
+
+
+
+&#x20;     <!-- Header -->
+
+&#x20;     <Border Grid.Row="0" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,0,1" Padding="20,14">
+
+&#x20;       <Grid>
+
+&#x20;         <Grid.ColumnDefinitions>
+
+&#x20;           <ColumnDefinition Width="\*"/>
+
+&#x20;           <ColumnDefinition Width="Auto"/>
+
+&#x20;         </Grid.ColumnDefinitions>
+
+&#x20;         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
+
+&#x20;           <Border Background="#313244" CornerRadius="8" Padding="8">
+
+&#x20;             <FontIcon Glyph="\&#xE943;" FontSize="18" Foreground="#7C6AF7"/>
+
+&#x20;           </Border>
+
+&#x20;           <StackPanel VerticalAlignment="Center" Spacing="1">
+
+&#x20;             <TextBlock Text="OllamaHub CoPilot" FontSize="16" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+&#x20;             <TextBlock Text="AI code assistant powered by local Ollama" FontSize="11" Foreground="#6C7086"/>
+
+&#x20;           </StackPanel>
+
+&#x20;         </StackPanel>
+
+&#x20;         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+
+&#x20;           <TextBlock Text="MODEL" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086" VerticalAlignment="Center"/>
+
+&#x20;           <ComboBox x:Name="ModelBox" Width="180" ItemsSource="{x:Bind ViewModel.AvailableModels}"
+
+&#x20;                     DisplayMemberPath="Name" Background="#313244" BorderBrush="#45475A"
+
+&#x20;                     PlaceholderText="Select model...">
+
+&#x20;             <ToolTipService.ToolTip><ToolTip Content="Choose the model for code assistance. Code-specific models (codestral, deepseek-coder) work best."/></ToolTipService.ToolTip>
+
+&#x20;           </ComboBox>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Grid>
+
+&#x20;     </Border>
+
+
+
+&#x20;     <!-- Mode buttons -->
+
+&#x20;     <Border Grid.Row="1" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,0,1" Padding="16,10">
+
+&#x20;       <StackPanel Orientation="Horizontal" Spacing="8">
+
+&#x20;         <TextBlock Text="MODE:" FontSize="11" FontWeight="SemiBold" CharacterSpacing="80" Foreground="#6C7086" VerticalAlignment="Center"/>
+
+&#x20;         <Button x:Name="BtnModeChat"     Content="Chat"     Click="Mode\_Click" Tag="Chat"     CornerRadius="8" Padding="14,6" FontSize="12" Background="#7C6AF7" BorderThickness="0" Foreground="White"/>
+
+&#x20;         <Button x:Name="BtnModeExplain"  Content="Explain"  Click="Mode\_Click" Tag="Explain"  CornerRadius="8" Padding="14,6" FontSize="12" Background="#313244" BorderBrush="#45475A"/>
+
+&#x20;         <Button x:Name="BtnModeReview"   Content="Review"   Click="Mode\_Click" Tag="Review"   CornerRadius="8" Padding="14,6" FontSize="12" Background="#313244" BorderBrush="#45475A"/>
+
+&#x20;         <Button x:Name="BtnModeFix"      Content="Fix"      Click="Mode\_Click" Tag="Fix"      CornerRadius="8" Padding="14,6" FontSize="12" Background="#313244" BorderBrush="#45475A"/>
+
+&#x20;         <Button x:Name="BtnModeTests"    Content="Tests"    Click="Mode\_Click" Tag="Tests"    CornerRadius="8" Padding="14,6" FontSize="12" Background="#313244" BorderBrush="#45475A"/>
+
+&#x20;         <Button x:Name="BtnModeDocs"     Content="Docs"     Click="Mode\_Click" Tag="Docs"     CornerRadius="8" Padding="14,6" FontSize="12" Background="#313244" BorderBrush="#45475A"/>
+
+&#x20;         <Button x:Name="BtnModeRefactor" Content="Refactor" Click="Mode\_Click" Tag="Refactor" CornerRadius="8" Padding="14,6" FontSize="12" Background="#313244" BorderBrush="#45475A"/>
+
+&#x20;       </StackPanel>
+
+&#x20;     </Border>
+
+
+
+&#x20;     <!-- Code / chat input -->
+
+&#x20;     <Border Grid.Row="2" Background="#1E1E2E" Margin="0">
+
+&#x20;       <Grid>
+
+&#x20;         <Grid.RowDefinitions>
+
+&#x20;           <RowDefinition Height="Auto"/>
+
+&#x20;           <RowDefinition Height="\*"/>
+
+&#x20;         </Grid.RowDefinitions>
+
+&#x20;         <!-- Code editor area -->
+
+&#x20;         <Border Grid.Row="0" x:Name="CodeInputArea" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,0,1" Padding="0">
+
+&#x20;           <Grid>
+
+&#x20;             <Grid.RowDefinitions>
+
+&#x20;               <RowDefinition Height="Auto"/>
+
+&#x20;               <RowDefinition Height="200"/>
+
+&#x20;             </Grid.RowDefinitions>
+
+&#x20;             <Border Grid.Row="0" Padding="16,8" Background="#13131E">
+
+&#x20;               <StackPanel Orientation="Horizontal" Spacing="8">
+
+&#x20;                 <FontIcon Glyph="\&#xE943;" FontSize="12" Foreground="#6C7086"/>
+
+&#x20;                 <TextBlock Text="Paste your code here" FontSize="12" Foreground="#6C7086"/>
+
+&#x20;               </StackPanel>
+
+&#x20;             </Border>
+
+&#x20;             <TextBox Grid.Row="1" x:Name="CodeBox"
+
+&#x20;                      Text="{x:Bind ViewModel.CodeInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+
+&#x20;                      PlaceholderText="// Paste your code here for Explain, Review, Fix, Tests, Docs, or Refactor modes..."
+
+&#x20;                      AcceptsReturn="True" TextWrapping="Wrap"
+
+&#x20;                      BorderThickness="0" Background="Transparent"
+
+&#x20;                      Foreground="#CDD6F4" Padding="16,12"
+
+&#x20;                      FontFamily="Cascadia Code, Consolas, monospace" FontSize="13"/>
+
+&#x20;           </Grid>
+
+&#x20;         </Border>
+
+&#x20;         <!-- Chat message area (Chat mode) -->
+
+&#x20;         <ScrollViewer Grid.Row="1" x:Name="ChatScroll" VerticalScrollBarVisibility="Auto" Padding="16,12">
+
+&#x20;           <ItemsControl ItemsSource="{x:Bind ViewModel.Messages, Mode=OneWay}">
+
+&#x20;             <ItemsControl.ItemTemplate>
+
+&#x20;               <DataTemplate x:DataType="vm:CopilotMessage">
+
+&#x20;                 <Grid Margin="0,6">
+
+&#x20;                   <Border Visibility="{x:Bind IsUser, Converter={StaticResource BoolToVisibilityConverter}}"
+
+&#x20;                           HorizontalAlignment="Right" MaxWidth="500" CornerRadius="14,14,4,14" Padding="14,10" Margin="80,0,0,0">
+
+&#x20;                     <Border.Background>
+
+&#x20;                       <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+
+&#x20;                         <GradientStop Color="#7C6AF7" Offset="0"/>
+
+&#x20;                         <GradientStop Color="#60A5FA" Offset="1"/>
+
+&#x20;                       </LinearGradientBrush>
+
+&#x20;                     </Border.Background>
+
+&#x20;                     <TextBlock Text="{x:Bind Content}" Foreground="White" TextWrapping="Wrap" FontSize="13" IsTextSelectionEnabled="True"/>
+
+&#x20;                   </Border>
+
+&#x20;                   <Border Visibility="{x:Bind IsAssistant, Converter={StaticResource BoolToVisibilityConverter}}"
+
+&#x20;                           HorizontalAlignment="Left" MaxWidth="580" Background="#313244" BorderBrush="#45475A" BorderThickness="1"
+
+&#x20;                           CornerRadius="14,14,14,4" Padding="14,12" Margin="0,0,80,0">
+
+&#x20;                     <StackPanel Spacing="8">
+
+&#x20;                       <StackPanel Orientation="Horizontal" Spacing="6">
+
+&#x20;                         <FontIcon Glyph="\&#xE943;" FontSize="11" Foreground="#7C6AF7"/>
+
+&#x20;                         <TextBlock Text="{x:Bind Model}" FontSize="11" FontWeight="SemiBold" Foreground="#7C6AF7"/>
+
+&#x20;                       </StackPanel>
+
+&#x20;                       <TextBlock Text="{x:Bind Content}" TextWrapping="Wrap" FontSize="13" Foreground="#CDD6F4"
+
+&#x20;                                  IsTextSelectionEnabled="True" FontFamily="Cascadia Code,Consolas,monospace" LineHeight="20"/>
+
+&#x20;                     </StackPanel>
+
+&#x20;                   </Border>
+
+&#x20;                 </Grid>
+
+&#x20;               </DataTemplate>
+
+&#x20;             </ItemsControl.ItemTemplate>
+
+&#x20;           </ItemsControl>
+
+&#x20;         </ScrollViewer>
+
+&#x20;       </Grid>
+
+&#x20;     </Border>
+
+
+
+&#x20;     <!-- Input bar -->
+
+&#x20;     <Border Grid.Row="3" Background="#181825" BorderBrush="#313244" BorderThickness="0,1,0,0" Padding="16,12">
+
+&#x20;       <Grid ColumnSpacing="10">
+
+&#x20;         <Grid.ColumnDefinitions>
+
+&#x20;           <ColumnDefinition Width="\*"/>
+
+&#x20;           <ColumnDefinition Width="Auto"/>
+
+&#x20;           <ColumnDefinition Width="Auto"/>
+
+&#x20;         </Grid.ColumnDefinitions>
+
+&#x20;         <Border Grid.Column="0" Background="#313244" BorderBrush="#45475A" BorderThickness="1" CornerRadius="12">
+
+&#x20;           <TextBox x:Name="CopilotInput"
+
+&#x20;                    Text="{x:Bind ViewModel.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+
+&#x20;                    PlaceholderText="Ask CoPilot... or describe the issue to fix"
+
+&#x20;                    BorderThickness="0" Background="Transparent" Foreground="#CDD6F4"
+
+&#x20;                    Padding="14,11" FontSize="13" KeyDown="CopilotInput\_KeyDown"/>
+
+&#x20;         </Border>
+
+&#x20;         <Button Grid.Column="1" Click="Run\_Click"
+
+&#x20;                 IsEnabled="{x:Bind ViewModel.IsGenerating, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
+
+&#x20;                 Width="48" Height="44" CornerRadius="12" BorderThickness="0">
+
+&#x20;           <Button.Background>
+
+&#x20;             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+
+&#x20;               <GradientStop Color="#7C6AF7" Offset="0"/>
+
+&#x20;               <GradientStop Color="#60A5FA" Offset="1"/>
+
+&#x20;             </LinearGradientBrush>
+
+&#x20;           </Button.Background>
+
+&#x20;           <FontIcon Glyph="\&#xE768;" FontSize="16" Foreground="White"/>
+
+&#x20;         </Button>
+
+&#x20;         <Button Grid.Column="2" Click="Clear\_Click" Width="44" Height="44" CornerRadius="12"
+
+&#x20;                 Background="#313244" BorderBrush="#45475A" ToolTipService.ToolTip="Clear">
+
+&#x20;           <FontIcon Glyph="\&#xE74D;" FontSize="15" Foreground="#F87171"/>
+
+&#x20;         </Button>
+
+&#x20;       </Grid>
+
+&#x20;     </Border>
+
+&#x20;   </Grid>
+
+
+
+&#x20;   <!-- RIGHT: Output panel -->
+
+&#x20;   <Border Grid.Column="1" Background="#181825" BorderBrush="#313244" BorderThickness="1,0,0,0">
+
+&#x20;     <Grid>
+
+&#x20;       <Grid.RowDefinitions>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;         <RowDefinition Height="\*"/>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;       </Grid.RowDefinitions>
+
+&#x20;       <Border Grid.Row="0" Padding="16,12" BorderBrush="#313244" BorderThickness="0,0,0,1">
+
+&#x20;         <Grid>
+
+&#x20;           <Grid.ColumnDefinitions><ColumnDefinition Width="\*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+
+&#x20;           <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+
+&#x20;             <TextBlock Text="OUTPUT" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086" VerticalAlignment="Center"/>
+
+&#x20;             <ProgressRing IsActive="{x:Bind ViewModel.IsGenerating, Mode=OneWay}" Width="14" Height="14" Foreground="#7C6AF7"/>
+
+&#x20;             <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}" FontSize="11" Foreground="#6C7086" VerticalAlignment="Center"/>
+
+&#x20;           </StackPanel>
+
+&#x20;           <Button Grid.Column="1" Click="CopyOutput\_Click" Background="Transparent" BorderThickness="0"
+
+&#x20;                   ToolTipService.ToolTip="Copy output to clipboard" Padding="6">
+
+&#x20;             <StackPanel Orientation="Horizontal" Spacing="4">
+
+&#x20;               <FontIcon Glyph="\&#xE8C8;" FontSize="13" Foreground="#6C7086"/>
+
+&#x20;               <TextBlock Text="Copy" FontSize="11" Foreground="#6C7086"/>
+
+&#x20;             </StackPanel>
+
+&#x20;           </Button>
+
+&#x20;         </Grid>
+
+&#x20;       </Border>
+
+&#x20;       <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="16,12">
+
+&#x20;         <TextBlock Text="{x:Bind ViewModel.OutputText, Mode=OneWay}"
+
+&#x20;                    TextWrapping="Wrap" FontSize="13" Foreground="#CDD6F4"
+
+&#x20;                    IsTextSelectionEnabled="True" LineHeight="20"
+
+&#x20;                    FontFamily="Cascadia Code,Consolas,monospace"/>
+
+&#x20;       </ScrollViewer>
+
+&#x20;       <Border Grid.Row="2" Padding="16,10" BorderBrush="#313244" BorderThickness="0,1,0,0" Background="#13131E">
+
+&#x20;         <TextBlock FontSize="11" Foreground="#45475A" TextWrapping="Wrap">
+
+&#x20;           <Run Text="Tip: "/>
+
+&#x20;           <Run Text="Select a mode above, paste your code on the left, and click Run. In Chat mode, just type your question." Foreground="#6C7086"/>
+
+&#x20;         </TextBlock>
+
+&#x20;       </Border>
+
+&#x20;     </Grid>
+
+&#x20;   </Border>
+
+&#x20; </Grid>
+
+</Page>
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\Views\\CopilotPage.xaml.cs" @'
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Microsoft.UI.Xaml;
+
+using Microsoft.UI.Xaml.Controls;
+
+using Microsoft.UI.Xaml.Input;
+
+using Microsoft.UI.Xaml.Media;
+
+using OllamaHub.Models;
+
+using OllamaHub.Services;
+
+using OllamaHub.ViewModels;
+
+using Windows.System;
+
+using Windows.UI;
+
+namespace OllamaHub.Views;
+
+public sealed partial class CopilotPage : Page
+
+{
+
+&#x20;   public CopilotViewModel ViewModel { get; }
+
+&#x20;   private readonly ShareService \_share;
+
+&#x20;   public CopilotPage()
+
+&#x20;   {
+
+&#x20;       ViewModel = App.Services.GetRequiredService<CopilotViewModel>();
+
+&#x20;       \_share    = App.Services.GetRequiredService<ShareService>();
+
+&#x20;       InitializeComponent();
+
+&#x20;       Loaded += (\_, \_) =>
+
+&#x20;       {
+
+&#x20;           ModelBox.SelectionChanged += (s, e) => { if (ModelBox.SelectedItem is OllamaModelInfo m) ViewModel.SelectedModel = m.Name; };
+
+&#x20;           ViewModel.Messages.CollectionChanged += (\_, \_) => { DispatcherQueue.TryEnqueue(() => { ChatScroll.UpdateLayout(); ChatScroll.ScrollToVerticalOffset(ChatScroll.ExtentHeight); }); };
+
+&#x20;       };
+
+&#x20;   }
+
+&#x20;   private readonly Dictionary<string,Button> \_modeBtns => new()
+
+&#x20;   {
+
+&#x20;       {"Chat",BtnModeChat},{"Explain",BtnModeExplain},{"Review",BtnModeReview},
+
+&#x20;       {"Fix",BtnModeFix},{"Tests",BtnModeTests},{"Docs",BtnModeDocs},{"Refactor",BtnModeRefactor}
+
+&#x20;   };
+
+&#x20;   private void Mode\_Click(object sender, RoutedEventArgs e)
+
+&#x20;   {
+
+&#x20;       if (sender is not Button btn) return;
+
+&#x20;       ViewModel.ActiveMode = btn.Tag?.ToString() ?? "Chat";
+
+&#x20;       foreach (var (tag, b) in \_modeBtns)
+
+&#x20;       {
+
+&#x20;           b.Background = tag == ViewModel.ActiveMode
+
+&#x20;               ? new SolidColorBrush(Color.FromArgb(255,124,106,247))
+
+&#x20;               : new SolidColorBrush(Color.FromArgb(255,49,50,68));
+
+&#x20;           b.Foreground = tag == ViewModel.ActiveMode
+
+&#x20;               ? new SolidColorBrush(Colors.White)
+
+&#x20;               : new SolidColorBrush(Color.FromArgb(255,205,214,244));
+
+&#x20;       }
+
+&#x20;       CodeInputArea.Visibility = ViewModel.ActiveMode == "Chat" ? Visibility.Collapsed : Visibility.Visible;
+
+&#x20;   }
+
+&#x20;   private void Run\_Click(object s, RoutedEventArgs e) => ViewModel.RunCommand.Execute(null);
+
+&#x20;   private void Clear\_Click(object s, RoutedEventArgs e) => ViewModel.ClearChatCommand.Execute(null);
+
+&#x20;   private void CopilotInput\_KeyDown(object sender, KeyRoutedEventArgs e)
+
+&#x20;   {
+
+&#x20;       if (e.Key == VirtualKey.Enter) { ViewModel.RunCommand.Execute(null); e.Handled = true; }
+
+&#x20;   }
+
+&#x20;   private void CopyOutput\_Click(object s, RoutedEventArgs e) => \_share.CopyText(ViewModel.OutputText);
+
+}
+
+'@ -Encoding UTF8
+
+Write-Ok "CopilotPage"
+
+
+
+\# ── PersonasPage ──────────────────────────────────────────────────────────────
+
+Write-Step "Writing Views\\PersonasPage.xaml"
+
+Set-Content "$root\\Views\\PersonasPage.xaml" @'
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Page x:Class="OllamaHub.Views.PersonasPage"
+
+&#x20;     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+
+&#x20;     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+&#x20;     xmlns:models="using:OllamaHub.Models"
+
+&#x20;     Background="#1E1E2E">
+
+&#x20; <Grid>
+
+&#x20;   <Grid.ColumnDefinitions>
+
+&#x20;     <ColumnDefinition Width="280"/>
+
+&#x20;     <ColumnDefinition Width="\*"/>
+
+&#x20;   </Grid.ColumnDefinitions>
+
+
+
+&#x20;   <!-- LEFT: Persona list -->
+
+&#x20;   <Border Grid.Column="0" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,1,0">
+
+&#x20;     <Grid>
+
+&#x20;       <Grid.RowDefinitions>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;         <RowDefinition Height="\*"/>
+
+&#x20;       </Grid.RowDefinitions>
+
+&#x20;       <Border Grid.Row="0" Padding="16,16,16,10">
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;           <Border Background="#313244" CornerRadius="8" Padding="7">
+
+&#x20;             <FontIcon Glyph="\&#xE716;" FontSize="16" Foreground="#F472B6"/>
+
+&#x20;           </Border>
+
+&#x20;           <TextBlock Text="Personas" FontSize="16" FontWeight="SemiBold" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Border>
+
+&#x20;       <Button Grid.Row="1" Click="NewPersona\_Click" HorizontalAlignment="Stretch" Margin="12,0,12,10"
+
+&#x20;               CornerRadius="10" Height="36" BorderThickness="0">
+
+&#x20;         <Button.Background>
+
+&#x20;           <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+
+&#x20;             <GradientStop Color="#7C6AF7" Offset="0"/>
+
+&#x20;             <GradientStop Color="#F472B6" Offset="1"/>
+
+&#x20;           </LinearGradientBrush>
+
+&#x20;         </Button.Background>
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="8">
+
+&#x20;           <FontIcon Glyph="\&#xE710;" FontSize="13" Foreground="White"/>
+
+&#x20;           <TextBlock Text="New Persona" Foreground="White" FontWeight="SemiBold" FontSize="13"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Button>
+
+&#x20;       <ListView Grid.Row="2" x:Name="PersonaList" ItemsSource="{x:Bind ViewModel.Personas}"
+
+&#x20;                 SelectionChanged="PersonaList\_SelectionChanged" Background="Transparent" Margin="6,0,6,8">
+
+&#x20;         <ListView.ItemTemplate>
+
+&#x20;           <DataTemplate x:DataType="models:Persona">
+
+&#x20;             <Border Padding="10,10" CornerRadius="10">
+
+&#x20;               <Grid ColumnSpacing="10">
+
+&#x20;                 <Grid.ColumnDefinitions>
+
+&#x20;                   <ColumnDefinition Width="Auto"/>
+
+&#x20;                   <ColumnDefinition Width="\*"/>
+
+&#x20;                 </Grid.ColumnDefinitions>
+
+&#x20;                 <Border Grid.Column="0" Width="38" Height="38" CornerRadius="10"
+
+&#x20;                         Background="{x:Bind AvatarColor}">
+
+&#x20;                   <FontIcon Glyph="{x:Bind Avatar}" FontSize="18" Foreground="White"
+
+&#x20;                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+&#x20;                 </Border>
+
+&#x20;                 <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+
+&#x20;                   <TextBlock Text="{x:Bind Name}" FontSize="13" FontWeight="SemiBold" Foreground="#CDD6F4" TextTrimming="CharacterEllipsis"/>
+
+&#x20;                   <TextBlock Text="{x:Bind Description}" FontSize="11" Foreground="#6C7086" TextTrimming="CharacterEllipsis"/>
+
+&#x20;                 </StackPanel>
+
+&#x20;               </Grid>
+
+&#x20;             </Border>
+
+&#x20;           </DataTemplate>
+
+&#x20;         </ListView.ItemTemplate>
+
+&#x20;         <ListView.ItemContainerStyle>
+
+&#x20;           <Style TargetType="ListViewItem">
+
+&#x20;             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+
+&#x20;             <Setter Property="CornerRadius" Value="10"/>
+
+&#x20;             <Setter Property="Margin" Value="0,2"/>
+
+&#x20;             <Setter Property="Padding" Value="0"/>
+
+&#x20;           </Style>
+
+&#x20;         </ListView.ItemContainerStyle>
+
+&#x20;       </ListView>
+
+&#x20;     </Grid>
+
+&#x20;   </Border>
+
+
+
+&#x20;   <!-- RIGHT: Editor -->
+
+&#x20;   <Grid Grid.Column="1" Padding="28">
+
+&#x20;     <Grid.RowDefinitions>
+
+&#x20;       <RowDefinition Height="Auto"/>
+
+&#x20;       <RowDefinition Height="Auto"/>
+
+&#x20;       <RowDefinition Height="Auto"/>
+
+&#x20;       <RowDefinition Height="\*"/>
+
+&#x20;       <RowDefinition Height="Auto"/>
+
+&#x20;     </Grid.RowDefinitions>
+
+&#x20;     <TextBlock Grid.Row="0" Text="Edit Persona" FontSize="22" FontWeight="Bold" Foreground="#CDD6F4" Margin="0,0,0,20"/>
+
+&#x20;     <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="16" Margin="0,0,0,14">
+
+&#x20;       <StackPanel Spacing="6" Width="200">
+
+&#x20;         <TextBlock Text="NAME" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+&#x20;         <Border Background="#313244" BorderBrush="#45475A" BorderThickness="1" CornerRadius="10">
+
+&#x20;           <TextBox Text="{x:Bind ViewModel.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+
+&#x20;                    PlaceholderText="Persona name..." BorderThickness="0" Background="Transparent"
+
+&#x20;                    Foreground="#CDD6F4" Padding="12,10"/>
+
+&#x20;         </Border>
+
+&#x20;       </StackPanel>
+
+&#x20;       <StackPanel Spacing="6" Width="200">
+
+&#x20;         <TextBlock Text="DESCRIPTION" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+&#x20;         <Border Background="#313244" BorderBrush="#45475A" BorderThickness="1" CornerRadius="10">
+
+&#x20;           <TextBox Text="{x:Bind ViewModel.Description, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+
+&#x20;                    PlaceholderText="Short description..." BorderThickness="0" Background="Transparent"
+
+&#x20;                    Foreground="#CDD6F4" Padding="12,10"/>
+
+&#x20;         </Border>
+
+&#x20;       </StackPanel>
+
+&#x20;     </StackPanel>
+
+&#x20;     <StackPanel Grid.Row="2" Spacing="6" Margin="0,0,0,14">
+
+&#x20;       <TextBlock Text="AVATAR COLOR" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+&#x20;       <StackPanel Orientation="Horizontal" Spacing="8" x:Name="ColorPicker"/>
+
+&#x20;     </StackPanel>
+
+&#x20;     <StackPanel Grid.Row="3" Spacing="6">
+
+&#x20;       <TextBlock Text="SYSTEM PROMPT" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+&#x20;       <TextBlock FontSize="11" Foreground="#6C7086" TextWrapping="Wrap">
+
+&#x20;         This is the instruction given to the AI at the start of every conversation with this persona.
+
+&#x20;         Define their personality, expertise, tone, and any rules they should follow.
+
+&#x20;       </TextBlock>
+
+&#x20;       <Border Background="#313244" BorderBrush="#45475A" BorderThickness="1" CornerRadius="12" MinHeight="160">
+
+&#x20;         <TextBox Text="{x:Bind ViewModel.SystemPrompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+
+&#x20;                  PlaceholderText="You are a \[role] who \[personality/expertise]..."
+
+&#x20;                  AcceptsReturn="True" TextWrapping="Wrap" BorderThickness="0" Background="Transparent"
+
+&#x20;                  Foreground="#CDD6F4" Padding="14,12" FontSize="13" MinHeight="160"/>
+
+&#x20;       </Border>
+
+&#x20;     </StackPanel>
+
+&#x20;     <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="12" Margin="0,16,0,0">
+
+&#x20;       <Button Click="Save\_Click" CornerRadius="10" Height="38" Padding="18,0" BorderThickness="0">
+
+&#x20;         <Button.Background>
+
+&#x20;           <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+
+&#x20;             <GradientStop Color="#7C6AF7" Offset="0"/>
+
+&#x20;             <GradientStop Color="#F472B6" Offset="1"/>
+
+&#x20;           </LinearGradientBrush>
+
+&#x20;         </Button.Background>
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="8">
+
+&#x20;           <FontIcon Glyph="\&#xE74E;" FontSize="13" Foreground="White"/>
+
+&#x20;           <TextBlock Text="Save Persona" Foreground="White" FontWeight="SemiBold"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Button>
+
+&#x20;       <Button Click="UseInChat\_Click" CornerRadius="10" Height="38" Padding="18,0"
+
+&#x20;               Background="#313244" BorderBrush="#45475A" Foreground="#CDD6F4">
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="8">
+
+&#x20;           <FontIcon Glyph="\&#xE8BD;" FontSize="13" Foreground="#60A5FA"/>
+
+&#x20;           <TextBlock Text="Chat with this Persona"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Button>
+
+&#x20;       <Button Click="Delete\_Click" CornerRadius="10" Height="38" Padding="18,0"
+
+&#x20;               Background="#2D1A1A" BorderBrush="#4A2020" Foreground="#F87171">
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="8">
+
+&#x20;           <FontIcon Glyph="\&#xE74D;" FontSize="13" Foreground="#F87171"/>
+
+&#x20;           <TextBlock Text="Delete"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Button>
+
+&#x20;     </StackPanel>
+
+&#x20;   </Grid>
+
+&#x20; </Grid>
+
+</Page>
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\Views\\PersonasPage.xaml.cs" @'
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Microsoft.UI.Xaml;
+
+using Microsoft.UI.Xaml.Controls;
+
+using Microsoft.UI.Xaml.Media;
+
+using OllamaHub.Models;
+
+using OllamaHub.ViewModels;
+
+using Windows.UI;
+
+namespace OllamaHub.Views;
+
+public sealed partial class PersonasPage : Page
+
+{
+
+&#x20;   public PersonaViewModel ViewModel { get; }
+
+&#x20;   public PersonasPage()
+
+&#x20;   {
+
+&#x20;       ViewModel = App.Services.GetRequiredService<PersonaViewModel>();
+
+&#x20;       InitializeComponent();
+
+&#x20;       Loaded += (\_, \_) => BuildColorPicker();
+
+&#x20;   }
+
+&#x20;   private void BuildColorPicker()
+
+&#x20;   {
+
+&#x20;       ColorPicker.Children.Clear();
+
+&#x20;       foreach (var color in ViewModel.AvatarColors)
+
+&#x20;       {
+
+&#x20;           var btn = new Button
+
+&#x20;           {
+
+&#x20;               Width=32, Height=32, CornerRadius=new CornerRadius(8),
+
+&#x20;               Background=new SolidColorBrush(Color.FromArgb(255,
+
+&#x20;                   Convert.ToByte(color\[1..3],16), Convert.ToByte(color\[3..5],16), Convert.ToByte(color\[5..7],16))),
+
+&#x20;               BorderThickness=new Thickness(2),
+
+&#x20;               Tag=color
+
+&#x20;           };
+
+&#x20;           btn.Click += (s, \_) => { if(s is Button b) ViewModel.AvatarColor = b.Tag?.ToString() ?? "#7C6AF7"; };
+
+&#x20;           ColorPicker.Children.Add(btn);
+
+&#x20;       }
+
+&#x20;   }
+
+&#x20;   private void PersonaList\_SelectionChanged(object s, SelectionChangedEventArgs e)
+
+&#x20;   {
+
+&#x20;       if (PersonaList.SelectedItem is Persona p) ViewModel.SelectPersona(p);
+
+&#x20;   }
+
+&#x20;   private void NewPersona\_Click(object s, RoutedEventArgs e) { ViewModel.NewCommand.Execute(null); PersonaList.SelectedItem=null; }
+
+&#x20;   private void Save\_Click(object s, RoutedEventArgs e)       => ViewModel.SaveCommand.Execute(null);
+
+&#x20;   private void Delete\_Click(object s, RoutedEventArgs e)     => ViewModel.DeleteCommand.Execute(null);
+
+&#x20;   private void UseInChat\_Click(object s, RoutedEventArgs e)
+
+&#x20;   {
+
+&#x20;       if (ViewModel.Selected == null) return;
+
+&#x20;       ChatPage.PendingPersona = ViewModel.Selected;
+
+&#x20;       if (Frame.Parent is Frame pf) pf.Navigate(typeof(ChatPage));
+
+&#x20;   }
+
+}
+
+'@ -Encoding UTF8
+
+Write-Ok "PersonasPage"
+
+
+
+\# ── ChainPage ─────────────────────────────────────────────────────────────────
+
+Write-Step "Writing Views\\ChainPage.xaml"
+
+Set-Content "$root\\Views\\ChainPage.xaml" @'
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Page x:Class="OllamaHub.Views.ChainPage"
+
+&#x20;     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+
+&#x20;     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+&#x20;     xmlns:models="using:OllamaHub.Models"
+
+&#x20;     Background="#1E1E2E">
+
+&#x20; <Grid>
+
+&#x20;   <Grid.ColumnDefinitions>
+
+&#x20;     <ColumnDefinition Width="240"/>
+
+&#x20;     <ColumnDefinition Width="\*"/>
+
+&#x20;   </Grid.ColumnDefinitions>
+
+
+
+&#x20;   <!-- LEFT: Chain list -->
+
+&#x20;   <Border Grid.Column="0" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,1,0">
+
+&#x20;     <Grid>
+
+&#x20;       <Grid.RowDefinitions>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;         <RowDefinition Height="\*"/>
+
+&#x20;       </Grid.RowDefinitions>
+
+&#x20;       <Border Grid.Row="0" Padding="14,14,14,10">
+
+&#x20;         <StackPanel Spacing="4">
+
+&#x20;           <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;             <Border Background="#313244" CornerRadius="8" Padding="7">
+
+&#x20;               <FontIcon Glyph="\&#xE8EF;" FontSize="16" Foreground="#2DD4BF"/>
+
+&#x20;             </Border>
+
+&#x20;             <TextBlock Text="Prompt Chains" FontSize="15" FontWeight="SemiBold" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+
+&#x20;           </StackPanel>
+
+&#x20;           <TextBlock Text="Connect prompts in a pipeline. Output of each step feeds into the next."
+
+&#x20;                      FontSize="11" Foreground="#6C7086" TextWrapping="Wrap"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Border>
+
+&#x20;       <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="12,0,12,10">
+
+&#x20;         <Button Click="NewChain\_Click" HorizontalAlignment="Stretch" CornerRadius="10" Height="34" BorderThickness="0" Padding="12,0">
+
+&#x20;           <Button.Background>
+
+&#x20;             <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+
+&#x20;               <GradientStop Color="#2DD4BF" Offset="0"/>
+
+&#x20;               <GradientStop Color="#60A5FA" Offset="1"/>
+
+&#x20;             </LinearGradientBrush>
+
+&#x20;           </Button.Background>
+
+&#x20;           <StackPanel Orientation="Horizontal" Spacing="6">
+
+&#x20;             <FontIcon Glyph="\&#xE710;" FontSize="12" Foreground="White"/>
+
+&#x20;             <TextBlock Text="New Chain" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+
+&#x20;           </StackPanel>
+
+&#x20;         </Button>
+
+&#x20;         <Button Click="DeleteChain\_Click" Width="34" Height="34" CornerRadius="10"
+
+&#x20;                 Background="#2D1A1A" BorderBrush="#4A2020" ToolTipService.ToolTip="Delete selected chain">
+
+&#x20;           <FontIcon Glyph="\&#xE74D;" FontSize="13" Foreground="#F87171"/>
+
+&#x20;         </Button>
+
+&#x20;       </StackPanel>
+
+&#x20;       <ListView Grid.Row="2" x:Name="ChainList" ItemsSource="{x:Bind ViewModel.Chains}"
+
+&#x20;                 SelectionChanged="ChainList\_SelectionChanged" Background="Transparent" Margin="6,0,6,8">
+
+&#x20;         <ListView.ItemTemplate>
+
+&#x20;           <DataTemplate x:DataType="models:PromptChain">
+
+&#x20;             <Border Padding="10,8" CornerRadius="8">
+
+&#x20;               <StackPanel Spacing="3">
+
+&#x20;                 <TextBlock Text="{x:Bind Name}" FontSize="13" FontWeight="SemiBold" Foreground="#CDD6F4" TextTrimming="CharacterEllipsis"/>
+
+&#x20;                 <TextBlock Text="{x:Bind Nodes.Count, Converter={StaticResource MessageCountConverter}}"
+
+&#x20;                            FontSize="11" Foreground="#6C7086"/>
+
+&#x20;               </StackPanel>
+
+&#x20;             </Border>
+
+&#x20;           </DataTemplate>
+
+&#x20;         </ListView.ItemTemplate>
+
+&#x20;         <ListView.ItemContainerStyle>
+
+&#x20;           <Style TargetType="ListViewItem">
+
+&#x20;             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+
+&#x20;             <Setter Property="CornerRadius" Value="8"/>
+
+&#x20;             <Setter Property="Margin" Value="0,1"/>
+
+&#x20;             <Setter Property="Padding" Value="0"/>
+
+&#x20;           </Style>
+
+&#x20;         </ListView.ItemContainerStyle>
+
+&#x20;       </ListView>
+
+&#x20;     </Grid>
+
+&#x20;   </Border>
+
+
+
+&#x20;   <!-- RIGHT: Chain editor -->
+
+&#x20;   <Grid Grid.Column="1">
+
+&#x20;     <Grid.RowDefinitions>
+
+&#x20;       <RowDefinition Height="Auto"/>
+
+&#x20;       <RowDefinition Height="Auto"/>
+
+&#x20;       <RowDefinition Height="\*"/>
+
+&#x20;       <RowDefinition Height="Auto"/>
+
+&#x20;     </Grid.RowDefinitions>
+
+
+
+&#x20;     <!-- Header -->
+
+&#x20;     <Border Grid.Row="0" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,0,1" Padding="20,14">
+
+&#x20;       <Grid>
+
+&#x20;         <Grid.ColumnDefinitions>
+
+&#x20;           <ColumnDefinition Width="\*"/>
+
+&#x20;           <ColumnDefinition Width="Auto"/>
+
+&#x20;         </Grid.ColumnDefinitions>
+
+&#x20;         <StackPanel Grid.Column="0" Spacing="4">
+
+&#x20;           <TextBlock Text="{x:Bind ViewModel.SelectedChain.Name, Mode=OneWay, FallbackValue='Select a chain'}"
+
+&#x20;                      FontSize="18" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+&#x20;           <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}" FontSize="12" Foreground="#6C7086"/>
+
+&#x20;         </StackPanel>
+
+&#x20;         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+
+&#x20;           <Button Click="AddNode\_Click" CornerRadius="10" Height="36" Padding="14,0"
+
+&#x20;                   Background="#313244" BorderBrush="#45475A" Foreground="#CDD6F4" FontSize="12">
+
+&#x20;             <StackPanel Orientation="Horizontal" Spacing="6">
+
+&#x20;               <FontIcon Glyph="\&#xE710;" FontSize="12" Foreground="#2DD4BF"/>
+
+&#x20;               <TextBlock Text="Add Step"/>
+
+&#x20;             </StackPanel>
+
+&#x20;           </Button>
+
+&#x20;           <Button Command="{x:Bind ViewModel.RunChainCommand}" CornerRadius="10" Height="36" Padding="16,0"
+
+&#x20;                   IsEnabled="{x:Bind ViewModel.IsRunning, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
+
+&#x20;                   BorderThickness="0">
+
+&#x20;             <Button.Background>
+
+&#x20;               <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+
+&#x20;                 <GradientStop Color="#2DD4BF" Offset="0"/>
+
+&#x20;                 <GradientStop Color="#60A5FA" Offset="1"/>
+
+&#x20;               </LinearGradientBrush>
+
+&#x20;             </Button.Background>
+
+&#x20;             <StackPanel Orientation="Horizontal" Spacing="8">
+
+&#x20;               <FontIcon Glyph="\&#xE768;" FontSize="14" Foreground="White"/>
+
+&#x20;               <TextBlock Text="Run Chain" Foreground="White" FontWeight="SemiBold" FontSize="13"/>
+
+&#x20;             </StackPanel>
+
+&#x20;           </Button>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Grid>
+
+&#x20;     </Border>
+
+
+
+&#x20;     <!-- Initial input -->
+
+&#x20;     <Border Grid.Row="1" Padding="20,12" BorderBrush="#313244" BorderThickness="0,0,0,1" Background="#181825">
+
+&#x20;       <StackPanel Spacing="6">
+
+&#x20;         <TextBlock Text="INITIAL INPUT ({{INPUT}})" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+&#x20;         <Border Background="#313244" BorderBrush="#45475A" BorderThickness="1" CornerRadius="10">
+
+&#x20;           <TextBox Text="{x:Bind ViewModel.InitialInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+
+&#x20;                    PlaceholderText="The topic or starting content for your chain..."
+
+&#x20;                    BorderThickness="0" Background="Transparent" Foreground="#CDD6F4" Padding="12,10"/>
+
+&#x20;         </Border>
+
+&#x20;       </StackPanel>
+
+&#x20;     </Border>
+
+
+
+&#x20;     <!-- Steps pipeline -->
+
+&#x20;     <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="20,16">
+
+&#x20;       <ItemsControl ItemsSource="{x:Bind ViewModel.Nodes, Mode=OneWay}">
+
+&#x20;         <ItemsControl.ItemTemplate>
+
+&#x20;           <DataTemplate x:DataType="models:ChainNode">
+
+&#x20;             <Border Background="#252535" BorderBrush="#313244" BorderThickness="1"
+
+&#x20;                     CornerRadius="14" Padding="18,14" Margin="0,0,0,12">
+
+&#x20;               <Grid RowSpacing="10">
+
+&#x20;                 <Grid.RowDefinitions>
+
+&#x20;                   <RowDefinition Height="Auto"/>
+
+&#x20;                   <RowDefinition Height="Auto"/>
+
+&#x20;                   <RowDefinition Height="Auto"/>
+
+&#x20;                   <RowDefinition Height="Auto"/>
+
+&#x20;                 </Grid.RowDefinitions>
+
+&#x20;                 <!-- Step header -->
+
+&#x20;                 <Grid Grid.Row="0">
+
+&#x20;                   <Grid.ColumnDefinitions>
+
+&#x20;                     <ColumnDefinition Width="Auto"/>
+
+&#x20;                     <ColumnDefinition Width="\*"/>
+
+&#x20;                     <ColumnDefinition Width="Auto"/>
+
+&#x20;                   </Grid.ColumnDefinitions>
+
+&#x20;                   <Border Grid.Column="0" Background="#2DD4BF" CornerRadius="6" Padding="8,4" Margin="0,0,10,0">
+
+&#x20;                     <TextBlock Text="{x:Bind Order}" FontSize="12" FontWeight="Bold" Foreground="#0F0F13"/>
+
+&#x20;                   </Border>
+
+&#x20;                   <TextBlock Grid.Column="1" Text="{x:Bind Name}" FontSize="14" FontWeight="SemiBold"
+
+&#x20;                              Foreground="#CDD6F4" VerticalAlignment="Center"/>
+
+&#x20;                   <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+
+&#x20;                     <ProgressRing IsActive="{x:Bind IsRunning}" Width="16" Height="16" Foreground="#2DD4BF"/>
+
+&#x20;                     <FontIcon Glyph="\&#xE8FB;" FontSize="14" Foreground="#4ADE80"
+
+&#x20;                               Visibility="{x:Bind IsDone, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+&#x20;                   </StackPanel>
+
+&#x20;                 </Grid>
+
+&#x20;                 <!-- Prompt -->
+
+&#x20;                 <StackPanel Grid.Row="1" Spacing="4">
+
+&#x20;                   <TextBlock Text="PROMPT (use {{PREV}} for previous output, {{INPUT}} for initial input)"
+
+&#x20;                              FontSize="10" FontWeight="SemiBold" CharacterSpacing="80" Foreground="#6C7086"/>
+
+&#x20;                   <Border Background="#1E1E2E" BorderBrush="#45475A" BorderThickness="1" CornerRadius="8">
+
+&#x20;                     <TextBox Text="{x:Bind Prompt}" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="80"
+
+&#x20;                              BorderThickness="0" Background="Transparent" Foreground="#CDD6F4"
+
+&#x20;                              Padding="10,8" FontSize="12" FontFamily="Cascadia Code,Consolas,monospace"/>
+
+&#x20;                   </Border>
+
+&#x20;                 </StackPanel>
+
+&#x20;                 <!-- Output label -->
+
+&#x20;                 <StackPanel Grid.Row="2" Spacing="4"
+
+&#x20;                             Visibility="{x:Bind IsDone, Converter={StaticResource BoolToVisibilityConverter}}">
+
+&#x20;                   <TextBlock Text="OUTPUT" FontSize="10" FontWeight="SemiBold" CharacterSpacing="80" Foreground="#6C7086"/>
+
+&#x20;                   <Border Background="#1A2E1A" BorderBrush="#2A4A2A" BorderThickness="1" CornerRadius="8" Padding="10,8" MaxHeight="120">
+
+&#x20;                     <ScrollViewer VerticalScrollBarVisibility="Auto">
+
+&#x20;                       <TextBlock Text="{x:Bind LastOutput}" TextWrapping="Wrap" FontSize="12"
+
+&#x20;                                  Foreground="#A6E3A1" IsTextSelectionEnabled="True"
+
+&#x20;                                  FontFamily="Cascadia Code,Consolas,monospace"/>
+
+&#x20;                     </ScrollViewer>
+
+&#x20;                   </Border>
+
+&#x20;                 </StackPanel>
+
+&#x20;               </Grid>
+
+&#x20;             </Border>
+
+&#x20;           </DataTemplate>
+
+&#x20;         </ItemsControl.ItemTemplate>
+
+&#x20;       </ItemsControl>
+
+&#x20;     </ScrollViewer>
+
+
+
+&#x20;     <!-- Empty state -->
+
+&#x20;     <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12"
+
+&#x20;                 Visibility="{x:Bind ViewModel.Nodes.Count, Mode=OneWay, Converter={StaticResource ZeroToVisibilityConverter}}">
+
+&#x20;       <FontIcon Glyph="\&#xE8EF;" FontSize="48" Foreground="#45475A" HorizontalAlignment="Center"/>
+
+&#x20;       <TextBlock Text="Select a chain or create a new one" FontSize="15" Foreground="#6C7086" HorizontalAlignment="Center"/>
+
+&#x20;       <TextBlock Text="Chains let you pipeline prompts together — the output of each step becomes the input for the next"
+
+&#x20;                  FontSize="13" Foreground="#45475A" HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="400" TextAlignment="Center"/>
+
+&#x20;     </StackPanel>
+
+&#x20;   </Grid>
+
+&#x20; </Grid>
+
+</Page>
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\Views\\ChainPage.xaml.cs" @'
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Microsoft.UI.Xaml;
+
+using Microsoft.UI.Xaml.Controls;
+
+using OllamaHub.Models;
+
+using OllamaHub.ViewModels;
+
+namespace OllamaHub.Views;
+
+public sealed partial class ChainPage : Page
+
+{
+
+&#x20;   public ChainViewModel ViewModel { get; }
+
+&#x20;   public ChainPage()
+
+&#x20;   {
+
+&#x20;       ViewModel = App.Services.GetRequiredService<ChainViewModel>();
+
+&#x20;       InitializeComponent();
+
+&#x20;   }
+
+&#x20;   private void ChainList\_SelectionChanged(object s, SelectionChangedEventArgs e)
+
+&#x20;   {
+
+&#x20;       if (ChainList.SelectedItem is PromptChain chain) ViewModel.SelectChain(chain);
+
+&#x20;   }
+
+&#x20;   private void NewChain\_Click(object s, RoutedEventArgs e)    => ViewModel.NewChainCommand.Execute(null);
+
+&#x20;   private void DeleteChain\_Click(object s, RoutedEventArgs e) => ViewModel.DeleteChainCommand.Execute(null);
+
+&#x20;   private void AddNode\_Click(object s, RoutedEventArgs e)     => ViewModel.AddNodeCommand.Execute(null);
+
+}
+
+'@ -Encoding UTF8
+
+Write-Ok "ChainPage"
+
+
+
+\# ── GuidePage ─────────────────────────────────────────────────────────────────
+
+Write-Step "Writing Views\\GuidePage.xaml"
+
+Set-Content "$root\\Views\\GuidePage.xaml" @'
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Page x:Class="OllamaHub.Views.GuidePage"
+
+&#x20;     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+
+&#x20;     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+&#x20;     Background="#1E1E2E">
+
+&#x20; <ScrollViewer VerticalScrollBarVisibility="Auto">
+
+&#x20;   <StackPanel Padding="32,28" Spacing="24" MaxWidth="800">
+
+
+
+&#x20;     <!-- Header -->
+
+&#x20;     <StackPanel Orientation="Horizontal" Spacing="14">
+
+&#x20;       <Border Background="#313244" CornerRadius="12" Padding="12">
+
+&#x20;         <FontIcon Glyph="\&#xE897;" FontSize="24" Foreground="#60A5FA"/>
+
+&#x20;       </Border>
+
+&#x20;       <StackPanel VerticalAlignment="Center" Spacing="2">
+
+&#x20;         <TextBlock Text="OllamaHub Guide" FontSize="26" FontWeight="Bold" Foreground="#CDD6F4"/>
+
+&#x20;         <TextBlock Text="Everything you need to get the most out of OllamaHub" FontSize="13" Foreground="#6C7086"/>
+
+&#x20;       </StackPanel>
+
+&#x20;     </StackPanel>
+
+
+
+&#x20;     <!-- Quick start -->
+
+&#x20;     <Border Background="#252535" BorderBrush="#313244" BorderThickness="1" CornerRadius="14" Padding="20">
+
+&#x20;       <StackPanel Spacing="12">
+
+&#x20;         <TextBlock Text="Quick start" FontSize="16" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+&#x20;         <StackPanel Spacing="10">
+
+&#x20;           <StackPanel Orientation="Horizontal" Spacing="12">
+
+&#x20;             <Border Background="#7C6AF7" CornerRadius="6" Width="24" Height="24">
+
+&#x20;               <TextBlock Text="1" FontSize="12" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+&#x20;             </Border>
+
+&#x20;             <TextBlock Text="Make sure Ollama is running: open a terminal and run  ollama serve" FontSize="13" Foreground="#BAC2DE" VerticalAlignment="Center"/>
+
+&#x20;           </StackPanel>
+
+&#x20;           <StackPanel Orientation="Horizontal" Spacing="12">
+
+&#x20;             <Border Background="#60A5FA" CornerRadius="6" Width="24" Height="24">
+
+&#x20;               <TextBlock Text="2" FontSize="12" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+&#x20;             </Border>
+
+&#x20;             <TextBlock Text="Pull a model from the Models tab: try  llama3.2  or  deepseek-coder-v2" FontSize="13" Foreground="#BAC2DE" VerticalAlignment="Center"/>
+
+&#x20;           </StackPanel>
+
+&#x20;           <StackPanel Orientation="Horizontal" Spacing="12">
+
+&#x20;             <Border Background="#4ADE80" CornerRadius="6" Width="24" Height="24">
+
+&#x20;               <TextBlock Text="3" FontSize="12" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+&#x20;             </Border>
+
+&#x20;             <TextBlock Text="Go to Chat, select your model, and start a conversation" FontSize="13" Foreground="#BAC2DE" VerticalAlignment="Center"/>
+
+&#x20;           </StackPanel>
+
+&#x20;         </StackPanel>
+
+&#x20;       </StackPanel>
+
+&#x20;     </Border>
+
+
+
+&#x20;     <!-- Features grid -->
+
+&#x20;     <TextBlock Text="Features overview" FontSize="16" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+&#x20;     <Grid ColumnSpacing="12" RowSpacing="12">
+
+&#x20;       <Grid.ColumnDefinitions>
+
+&#x20;         <ColumnDefinition Width="\*"/>
+
+&#x20;         <ColumnDefinition Width="\*"/>
+
+&#x20;       </Grid.ColumnDefinitions>
+
+&#x20;       <Grid.RowDefinitions>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;         <RowDefinition Height="Auto"/>
+
+&#x20;       </Grid.RowDefinitions>
+
+
+
+&#x20;       <Border Grid.Row="0" Grid.Column="0" Background="#1A1A2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="16,14">
+
+&#x20;         <StackPanel Spacing="8">
+
+&#x20;           <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;             <FontIcon Glyph="\&#xE8BD;" FontSize="18" Foreground="#7C6AF7"/>
+
+&#x20;             <TextBlock Text="Chat" FontSize="14" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+&#x20;           </StackPanel>
+
+&#x20;           <TextBlock Text="Full conversation interface with session history, voice input, TTS output, and slash command templates. Type / to see all prompt shortcuts." FontSize="12" Foreground="#6C7086" TextWrapping="Wrap"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Border>
+
+
+
+&#x20;       <Border Grid.Row="0" Grid.Column="1" Background="#1A1A2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="16,14">
+
+&#x20;         <StackPanel Spacing="8">
+
+&#x20;           <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;             <FontIcon Glyph="\&#xE943;" FontSize="18" Foreground="#7C6AF7"/>
+
+&#x20;             <TextBlock Text="CoPilot" FontSize="14" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+&#x20;           </StackPanel>
+
+&#x20;           <TextBlock Text="Dedicated code assistant. Paste code and choose Explain, Review, Fix, Write Tests, Generate Docs, or Refactor. Chat mode for general questions." FontSize="12" Foreground="#6C7086" TextWrapping="Wrap"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Border>
+
+
+
+&#x20;       <Border Grid.Row="1" Grid.Column="0" Background="#1A1A2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="16,14">
+
+&#x20;         <StackPanel Spacing="8">
+
+&#x20;           <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;             <FontIcon Glyph="\&#xE716;" FontSize="18" Foreground="#F472B6"/>
+
+&#x20;             <TextBlock Text="Personas" FontSize="14" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+&#x20;           </StackPanel>
+
+&#x20;           <TextBlock Text="Create named AI characters with custom system prompts and personalities. Click 'Chat with this Persona' to start a conversation as that character." FontSize="12" Foreground="#6C7086" TextWrapping="Wrap"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Border>
+
+
+
+&#x20;       <Border Grid.Row="1" Grid.Column="1" Background="#1A1A2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="16,14">
+
+&#x20;         <StackPanel Spacing="8">
+
+&#x20;           <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;             <FontIcon Glyph="\&#xE8EF;" FontSize="18" Foreground="#2DD4BF"/>
+
+&#x20;             <TextBlock Text="Prompt Chains" FontSize="14" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+&#x20;           </StackPanel>
+
+&#x20;           <TextBlock Text="Unique feature! Build a visual pipeline of prompts. Each step's output becomes the next step's input. Use {{PREV}} and {{INPUT}} in your prompts." FontSize="12" Foreground="#6C7086" TextWrapping="Wrap"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Border>
+
+
+
+&#x20;       <Border Grid.Row="2" Grid.Column="0" Background="#1A1A2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="16,14">
+
+&#x20;         <StackPanel Spacing="8">
+
+&#x20;           <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;             <FontIcon Glyph="\&#xE8C4;" FontSize="18" Foreground="#60A5FA"/>
+
+&#x20;             <TextBlock Text="Compare" FontSize="14" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+&#x20;           </StackPanel>
+
+&#x20;           <TextBlock Text="Run the same prompt on two models simultaneously and compare responses, speed, and token count side by side." FontSize="12" Foreground="#6C7086" TextWrapping="Wrap"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Border>
+
+
+
+&#x20;       <Border Grid.Row="2" Grid.Column="1" Background="#1A1A2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="16,14">
+
+&#x20;         <StackPanel Spacing="8">
+
+&#x20;           <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;             <FontIcon Glyph="\&#xE9D9;" FontSize="18" Foreground="#4ADE80"/>
+
+&#x20;             <TextBlock Text="Performance Stats" FontSize="14" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+&#x20;           </StackPanel>
+
+&#x20;           <TextBlock Text="Live dashboard showing tokens/second, average latency, total tokens generated, and estimated cost savings vs cloud APIs." FontSize="12" Foreground="#6C7086" TextWrapping="Wrap"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Border>
+
+
+
+&#x20;       <Border Grid.Row="3" Grid.Column="0" Background="#1A1A2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="16,14">
+
+&#x20;         <StackPanel Spacing="8">
+
+&#x20;           <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;             <FontIcon Glyph="\&#xE8F4;" FontSize="18" Foreground="#FBBF24"/>
+
+&#x20;             <TextBlock Text="Prompt Library" FontSize="14" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+&#x20;           </StackPanel>
+
+&#x20;           <TextBlock Text="Save and organize reusable prompt templates. Access them instantly in chat by typing / followed by the template name." FontSize="12" Foreground="#6C7086" TextWrapping="Wrap"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Border>
+
+
+
+&#x20;       <Border Grid.Row="3" Grid.Column="1" Background="#1A1A2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="16,14">
+
+&#x20;         <StackPanel Spacing="8">
+
+&#x20;           <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;             <FontIcon Glyph="\&#xE756;" FontSize="18" Foreground="#A6E3A1"/>
+
+&#x20;             <TextBlock Text="Terminal" FontSize="14" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+&#x20;           </StackPanel>
+
+&#x20;           <TextBlock Text="Built-in command prompt with command history (up/down arrows). Run Ollama commands, git, or any Windows command without leaving the app." FontSize="12" Foreground="#6C7086" TextWrapping="Wrap"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Border>
+
+&#x20;     </Grid>
+
+
+
+&#x20;     <!-- Keyboard shortcuts -->
+
+&#x20;     <TextBlock Text="Keyboard shortcuts" FontSize="16" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+&#x20;     <Border Background="#252535" BorderBrush="#313244" BorderThickness="1" CornerRadius="14" Padding="20">
+
+&#x20;       <Grid ColumnSpacing="24" RowSpacing="10">
+
+&#x20;         <Grid.ColumnDefinitions>
+
+&#x20;           <ColumnDefinition Width="\*"/>
+
+&#x20;           <ColumnDefinition Width="\*"/>
+
+&#x20;         </Grid.ColumnDefinitions>
+
+&#x20;         <Grid.RowDefinitions>
+
+&#x20;           <RowDefinition Height="Auto"/>
+
+&#x20;           <RowDefinition Height="Auto"/>
+
+&#x20;           <RowDefinition Height="Auto"/>
+
+&#x20;           <RowDefinition Height="Auto"/>
+
+&#x20;           <RowDefinition Height="Auto"/>
+
+&#x20;         </Grid.RowDefinitions>
+
+
+
+&#x20;         <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="12">
+
+&#x20;           <Border Background="#313244" CornerRadius="6" Padding="8,4"><TextBlock Text="Enter" FontSize="12" Foreground="#CDD6F4" FontFamily="Cascadia Code,Consolas,monospace"/></Border>
+
+&#x20;           <TextBlock Text="Send message" FontSize="13" Foreground="#BAC2DE" VerticalAlignment="Center"/>
+
+&#x20;         </StackPanel>
+
+&#x20;         <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="12">
+
+&#x20;           <Border Background="#313244" CornerRadius="6" Padding="8,4"><TextBlock Text="Ctrl+Enter" FontSize="12" Foreground="#CDD6F4" FontFamily="Cascadia Code,Consolas,monospace"/></Border>
+
+&#x20;           <TextBlock Text="New line in input" FontSize="13" Foreground="#BAC2DE" VerticalAlignment="Center"/>
+
+&#x20;         </StackPanel>
+
+&#x20;         <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="12">
+
+&#x20;           <Border Background="#313244" CornerRadius="6" Padding="8,4"><TextBlock Text="/" FontSize="12" Foreground="#CDD6F4" FontFamily="Cascadia Code,Consolas,monospace"/></Border>
+
+&#x20;           <TextBlock Text="Open slash command menu" FontSize="13" Foreground="#BAC2DE" VerticalAlignment="Center"/>
+
+&#x20;         </StackPanel>
+
+&#x20;         <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="12">
+
+&#x20;           <Border Background="#313244" CornerRadius="6" Padding="8,4"><TextBlock Text="Esc" FontSize="12" Foreground="#CDD6F4" FontFamily="Cascadia Code,Consolas,monospace"/></Border>
+
+&#x20;           <TextBlock Text="Close slash menu / cancel" FontSize="13" Foreground="#BAC2DE" VerticalAlignment="Center"/>
+
+&#x20;         </StackPanel>
+
+&#x20;         <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Spacing="12">
+
+&#x20;           <Border Background="#313244" CornerRadius="6" Padding="8,4"><TextBlock Text="↑ ↓" FontSize="12" Foreground="#CDD6F4" FontFamily="Cascadia Code,Consolas,monospace"/></Border>
+
+&#x20;           <TextBlock Text="Navigate slash menu / terminal history" FontSize="13" Foreground="#BAC2DE" VerticalAlignment="Center"/>
+
+&#x20;         </StackPanel>
+
+&#x20;         <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="12">
+
+&#x20;           <Border Background="#313244" CornerRadius="6" Padding="8,4"><TextBlock Text="Click Send again" FontSize="12" Foreground="#CDD6F4" FontFamily="Cascadia Code,Consolas,monospace"/></Border>
+
+&#x20;           <TextBlock Text="Stop generation mid-stream" FontSize="13" Foreground="#BAC2DE" VerticalAlignment="Center"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Grid>
+
+&#x20;     </Border>
+
+
+
+&#x20;     <!-- Tips -->
+
+&#x20;     <TextBlock Text="Pro tips" FontSize="16" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+&#x20;     <StackPanel Spacing="10">
+
+&#x20;       <Border Background="#1A2E1A" BorderBrush="#2A4A2A" BorderThickness="1" CornerRadius="10" Padding="14,12">
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;           <FontIcon Glyph="\&#xE82D;" FontSize="16" Foreground="#4ADE80"/>
+
+&#x20;           <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#A6E3A1" Margin="0,0,0,0">
+
+&#x20;             <Run FontWeight="SemiBold">Best models for coding:</Run>
+
+&#x20;             <Run> deepseek-coder-v2, codestral, qwen2.5-coder. Pull them in the Models tab.</Run>
+
+&#x20;           </TextBlock>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Border>
+
+&#x20;       <Border Background="#1A1A2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="10" Padding="14,12">
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;           <FontIcon Glyph="\&#xE82D;" FontSize="16" Foreground="#60A5FA"/>
+
+&#x20;           <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#BAC2DE">
+
+&#x20;             <Run FontWeight="SemiBold">Prompt Chains tip:</Run>
+
+&#x20;             <Run> Use {{PREV}} in a step's prompt to insert the previous step's output. Use {{INPUT}} to reference the initial input at any step.</Run>
+
+&#x20;           </TextBlock>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Border>
+
+&#x20;       <Border Background="#1A1A2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="10" Padding="14,12">
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;           <FontIcon Glyph="\&#xE82D;" FontSize="16" Foreground="#F472B6"/>
+
+&#x20;           <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#BAC2DE">
+
+&#x20;             <Run FontWeight="SemiBold">Personas tip:</Run>
+
+&#x20;             <Run> A well-written system prompt makes a huge difference. Be specific about the persona's role, expertise level, communication style, and any constraints.</Run>
+
+&#x20;           </TextBlock>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Border>
+
+&#x20;       <Border Background="#1A1A2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="10" Padding="14,12">
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;           <FontIcon Glyph="\&#xE82D;" FontSize="16" Foreground="#FBBF24"/>
+
+&#x20;           <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#BAC2DE">
+
+&#x20;             <Run FontWeight="SemiBold">Context window tip:</Run>
+
+&#x20;             <Run> The green/amber/red bar at the top of chat shows how full the context window is. Start a new chat when it turns red to avoid degraded responses.</Run>
+
+&#x20;           </TextBlock>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Border>
+
+&#x20;     </StackPanel>
+
+
+
+&#x20;     <!-- Version info -->
+
+&#x20;     <Border Background="#181825" BorderBrush="#313244" BorderThickness="1" CornerRadius="10" Padding="16,12">
+
+&#x20;       <StackPanel Orientation="Horizontal" Spacing="12">
+
+&#x20;         <FontIcon Glyph="\&#xE99A;" FontSize="20" Foreground="#7C6AF7"/>
+
+&#x20;         <StackPanel Spacing="2">
+
+&#x20;           <TextBlock Text="OllamaHub v3.0" FontSize="13" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+&#x20;           <TextBlock Text="Built on WinUI 3 · Powered by Ollama · 100% local · 100% free" FontSize="11" Foreground="#6C7086"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </StackPanel>
+
+&#x20;     </Border>
+
+&#x20;   </StackPanel>
+
+&#x20; </ScrollViewer>
+
+</Page>
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\Views\\GuidePage.xaml.cs" @'
+
+using Microsoft.UI.Xaml.Controls;
+
+namespace OllamaHub.Views;
+
+public sealed partial class GuidePage : Page
+
+{
+
+&#x20;   public GuidePage() { InitializeComponent(); }
+
+}
+
+'@ -Encoding UTF8
+
+Write-Ok "GuidePage"
+
+
+
+\# ── Remaining pages (History, Models, Settings, Compare, Performance, Terminal, Prompts) ──
+
+Write-Step "Writing remaining views"
+
+
+
+Set-Content "$root\\Views\\HistoryPage.xaml" @'
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Page x:Class="OllamaHub.Views.HistoryPage"
+
+&#x20;     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+
+&#x20;     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+&#x20;     xmlns:models="using:OllamaHub.Models"
+
+&#x20;     Background="#1E1E2E">
+
+&#x20; <Grid>
+
+&#x20;   <Grid.RowDefinitions>
+
+&#x20;     <RowDefinition Height="Auto"/>
+
+&#x20;     <RowDefinition Height="\*"/>
+
+&#x20;   </Grid.RowDefinitions>
+
+&#x20;   <Border Grid.Row="0" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,0,1" Padding="28,18">
+
+&#x20;     <Grid>
+
+&#x20;       <Grid.ColumnDefinitions><ColumnDefinition Width="\*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+
+&#x20;       <StackPanel Grid.Column="0" Spacing="4">
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="12">
+
+&#x20;           <Border Background="#313244" CornerRadius="8" Padding="8"><FontIcon Glyph="\&#xE81C;" FontSize="18" Foreground="#60A5FA"/></Border>
+
+&#x20;           <TextBlock Text="Chat History" FontSize="24" FontWeight="Bold" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+
+&#x20;         </StackPanel>
+
+&#x20;         <TextBlock Text="Search and manage your past conversations" FontSize="13" Foreground="#6C7086" Margin="0,4,0,0"/>
+
+&#x20;       </StackPanel>
+
+&#x20;       <Border Grid.Column="1" Background="#313244" BorderBrush="#45475A" BorderThickness="1" CornerRadius="10">
+
+&#x20;         <TextBox Width="240" PlaceholderText="Search history..."
+
+&#x20;                  Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+
+&#x20;                  BorderThickness="0" Background="Transparent" Foreground="#CDD6F4" Padding="12,10"/>
+
+&#x20;       </Border>
+
+&#x20;     </Grid>
+
+&#x20;   </Border>
+
+&#x20;   <ScrollViewer Grid.Row="1" Padding="28,20">
+
+&#x20;     <ItemsControl ItemsSource="{x:Bind ViewModel.FilteredSessions, Mode=OneWay}">
+
+&#x20;       <ItemsControl.ItemTemplate>
+
+&#x20;         <DataTemplate x:DataType="models:ChatSession">
+
+&#x20;           <Border Background="#252535" BorderBrush="#313244" BorderThickness="1" CornerRadius="14" Padding="20,16" Margin="0,0,0,10">
+
+&#x20;             <Grid>
+
+&#x20;               <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="\*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+
+&#x20;               <Border Grid.Column="0" Width="4" CornerRadius="2" Margin="0,0,16,0">
+
+&#x20;                 <Border.Background>
+
+&#x20;                   <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+
+&#x20;                     <GradientStop Color="#7C6AF7" Offset="0"/>
+
+&#x20;                     <GradientStop Color="#60A5FA" Offset="1"/>
+
+&#x20;                   </LinearGradientBrush>
+
+&#x20;                 </Border.Background>
+
+&#x20;               </Border>
+
+&#x20;               <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center">
+
+&#x20;                 <TextBlock Text="{x:Bind Title}" FontSize="15" FontWeight="SemiBold" Foreground="#CDD6F4" TextTrimming="CharacterEllipsis"/>
+
+&#x20;                 <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;                   <Border Background="#313244" CornerRadius="5" Padding="6,2"><TextBlock Text="{x:Bind ModelName}" FontSize="11" Foreground="#7C6AF7"/></Border>
+
+&#x20;                   <TextBlock Text="{x:Bind CreatedAt, Converter={StaticResource DateToTextConverter}}" FontSize="11" Foreground="#6C7086" VerticalAlignment="Center"/>
+
+&#x20;                   <TextBlock Text="{x:Bind Messages.Count, Converter={StaticResource MessageCountConverter}}" FontSize="11" Foreground="#6C7086" VerticalAlignment="Center"/>
+
+&#x20;                 </StackPanel>
+
+&#x20;               </StackPanel>
+
+&#x20;               <Button Grid.Column="2" Click="DeleteSession\_Click" Tag="{x:Bind}"
+
+&#x20;                       Background="#2D1A1A" BorderBrush="#4A2020" CornerRadius="8" Width="36" Height="36" Padding="0">
+
+&#x20;                 <FontIcon Glyph="\&#xE74D;" FontSize="14" Foreground="#F87171"/>
+
+&#x20;               </Button>
+
+&#x20;             </Grid>
+
+&#x20;           </Border>
+
+&#x20;         </DataTemplate>
+
+&#x20;       </ItemsControl.ItemTemplate>
+
+&#x20;     </ItemsControl>
+
+&#x20;   </ScrollViewer>
+
+&#x20; </Grid>
+
+</Page>
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\Views\\HistoryPage.xaml.cs" @'
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Microsoft.UI.Xaml;
+
+using Microsoft.UI.Xaml.Controls;
+
+using OllamaHub.Models;
+
+using OllamaHub.ViewModels;
+
+namespace OllamaHub.Views;
+
+public sealed partial class HistoryPage : Page
+
+{
+
+&#x20;   public HistoryViewModel ViewModel { get; }
+
+&#x20;   public HistoryPage() { ViewModel = App.Services.GetRequiredService<HistoryViewModel>(); InitializeComponent(); }
+
+&#x20;   private void DeleteSession\_Click(object s, RoutedEventArgs e) { if (s is Button btn \&\& btn.Tag is ChatSession session) ViewModel.DeleteChatCommand.Execute(session); }
+
+}
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\Views\\ModelsPage.xaml" @'
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Page x:Class="OllamaHub.Views.ModelsPage"
+
+&#x20;     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+
+&#x20;     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+&#x20;     xmlns:models="using:OllamaHub.Models"
+
+&#x20;     Background="#1E1E2E">
+
+&#x20; <Grid>
+
+&#x20;   <Grid.RowDefinitions>
+
+&#x20;     <RowDefinition Height="Auto"/>
+
+&#x20;     <RowDefinition Height="Auto"/>
+
+&#x20;     <RowDefinition Height="\*"/>
+
+&#x20;   </Grid.RowDefinitions>
+
+&#x20;   <Border Grid.Row="0" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,0,1" Padding="28,18">
+
+&#x20;     <StackPanel Spacing="4">
+
+&#x20;       <StackPanel Orientation="Horizontal" Spacing="12">
+
+&#x20;         <Border Background="#313244" CornerRadius="8" Padding="8"><FontIcon Glyph="\&#xE77B;" FontSize="18" Foreground="#7C6AF7"/></Border>
+
+&#x20;         <TextBlock Text="Models" FontSize="24" FontWeight="Bold" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+
+&#x20;       </StackPanel>
+
+&#x20;       <TextBlock Text="Manage your local Ollama models. Pull new ones from ollama.com/library" FontSize="13" Foreground="#6C7086" Margin="0,4,0,0"/>
+
+&#x20;     </StackPanel>
+
+&#x20;   </Border>
+
+&#x20;   <Border Grid.Row="1" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,0,1" Padding="28,14">
+
+&#x20;     <Grid ColumnSpacing="12">
+
+&#x20;       <Grid.ColumnDefinitions><ColumnDefinition Width="\*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+
+&#x20;       <Border Grid.Column="0" Background="#313244" BorderBrush="#45475A" BorderThickness="1" CornerRadius="10">
+
+&#x20;         <TextBox Text="{x:Bind ViewModel.PullModelName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+
+&#x20;                  PlaceholderText="Model name to pull (e.g. llama3.2, deepseek-coder-v2, phi4)"
+
+&#x20;                  BorderThickness="0" Background="Transparent" Foreground="#CDD6F4" Padding="14,10"/>
+
+&#x20;       </Border>
+
+&#x20;       <Button Grid.Column="1" Command="{x:Bind ViewModel.PullModelCommand}"
+
+&#x20;               IsEnabled="{x:Bind ViewModel.IsPulling, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
+
+&#x20;               CornerRadius="10" Height="42" Padding="16,0" BorderThickness="0">
+
+&#x20;         <Button.Background>
+
+&#x20;           <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+
+&#x20;             <GradientStop Color="#7C6AF7" Offset="0"/>
+
+&#x20;             <GradientStop Color="#60A5FA" Offset="1"/>
+
+&#x20;           </LinearGradientBrush>
+
+&#x20;         </Button.Background>
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="8">
+
+&#x20;           <FontIcon Glyph="\&#xE896;" FontSize="14" Foreground="White"/>
+
+&#x20;           <TextBlock Text="Pull" Foreground="White" FontWeight="SemiBold"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </Button>
+
+&#x20;       <Button Grid.Column="2" Command="{x:Bind ViewModel.LoadModelsCommand}"
+
+&#x20;               CornerRadius="10" Height="42" Padding="14,0" Background="#313244" BorderBrush="#45475A">
+
+&#x20;         <ToolTipService.ToolTip><ToolTip Content="Refresh model list"/></ToolTipService.ToolTip>
+
+&#x20;         <FontIcon Glyph="\&#xE72C;" FontSize="16" Foreground="#CDD6F4"/>
+
+&#x20;       </Button>
+
+&#x20;     </Grid>
+
+&#x20;   </Border>
+
+&#x20;   <ScrollViewer Grid.Row="2" Padding="28,20">
+
+&#x20;     <StackPanel Spacing="12">
+
+&#x20;       <ProgressBar Value="{x:Bind ViewModel.PullProgress, Mode=OneWay}" Maximum="100" Foreground="#7C6AF7"
+
+&#x20;                    Visibility="{x:Bind ViewModel.IsPulling, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,0,0,4"/>
+
+&#x20;       <TextBlock Text="{x:Bind ViewModel.PullStatus, Mode=OneWay}" FontSize="12" Foreground="#7C6AF7" Margin="0,0,0,8"
+
+&#x20;                  Visibility="{x:Bind ViewModel.IsPulling, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+&#x20;       <ItemsControl ItemsSource="{x:Bind ViewModel.Models, Mode=OneWay}">
+
+&#x20;         <ItemsControl.ItemTemplate>
+
+&#x20;           <DataTemplate x:DataType="models:OllamaModelInfo">
+
+&#x20;             <Border Background="#252535" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="18,14" Margin="0,0,0,8">
+
+&#x20;               <Grid>
+
+&#x20;                 <Grid.ColumnDefinitions><ColumnDefinition Width="\*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+
+&#x20;                 <StackPanel Grid.Column="0" Spacing="6">
+
+&#x20;                   <TextBlock Text="{x:Bind Name}" FontSize="15" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+&#x20;                   <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;                     <Border Background="#313244" CornerRadius="5" Padding="6,2"><TextBlock Text="{x:Bind DisplaySize}" FontSize="11" Foreground="#60A5FA"/></Border>
+
+&#x20;                   </StackPanel>
+
+&#x20;                 </StackPanel>
+
+&#x20;                 <Button Grid.Column="1" Click="DeleteModel\_Click" Tag="{x:Bind}"
+
+&#x20;                         Background="#2D1A1A" BorderBrush="#4A2020" CornerRadius="8" Width="36" Height="36" Padding="0">
+
+&#x20;                   <FontIcon Glyph="\&#xE74D;" FontSize="14" Foreground="#F87171"/>
+
+&#x20;                 </Button>
+
+&#x20;               </Grid>
+
+&#x20;             </Border>
+
+&#x20;           </DataTemplate>
+
+&#x20;         </ItemsControl.ItemTemplate>
+
+&#x20;       </ItemsControl>
+
+&#x20;     </StackPanel>
+
+&#x20;   </ScrollViewer>
+
+&#x20; </Grid>
+
+</Page>
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\Views\\ModelsPage.xaml.cs" @'
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Microsoft.UI.Xaml;
+
+using Microsoft.UI.Xaml.Controls;
+
+using OllamaHub.Models;
+
+using OllamaHub.ViewModels;
+
+namespace OllamaHub.Views;
+
+public sealed partial class ModelsPage : Page
+
+{
+
+&#x20;   public ModelsViewModel ViewModel { get; }
+
+&#x20;   public ModelsPage() { ViewModel = App.Services.GetRequiredService<ModelsViewModel>(); InitializeComponent(); }
+
+&#x20;   private async void DeleteModel\_Click(object s, RoutedEventArgs e)
+
+&#x20;   {
+
+&#x20;       if (s is Button btn \&\& btn.Tag is OllamaModelInfo m)
+
+&#x20;       {
+
+&#x20;           var dlg = new ContentDialog { Title="Delete model", Content=$"Delete {m.Name}? This cannot be undone.", PrimaryButtonText="Delete", CloseButtonText="Cancel", XamlRoot=XamlRoot };
+
+&#x20;           if (await dlg.ShowAsync() == ContentDialogResult.Primary) ViewModel.DeleteModelCommand.Execute(m);
+
+&#x20;       }
+
+&#x20;   }
+
+}
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\Views\\SettingsPage.xaml" @'
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Page x:Class="OllamaHub.Views.SettingsPage"
+
+&#x20;     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+
+&#x20;     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+&#x20;     Background="#1E1E2E">
+
+&#x20; <ScrollViewer VerticalScrollBarVisibility="Auto">
+
+&#x20;   <StackPanel Padding="32,28" Spacing="20" MaxWidth="640">
+
+&#x20;     <StackPanel Orientation="Horizontal" Spacing="12">
+
+&#x20;       <Border Background="#313244" CornerRadius="10" Padding="10"><FontIcon Glyph="\&#xE713;" FontSize="20" Foreground="#7C6AF7"/></Border>
+
+&#x20;       <TextBlock Text="Settings" FontSize="24" FontWeight="Bold" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+
+&#x20;     </StackPanel>
+
+&#x20;     <Border Background="#252535" BorderBrush="#313244" BorderThickness="1" CornerRadius="14" Padding="20">
+
+&#x20;       <StackPanel Spacing="14">
+
+&#x20;         <TextBlock Text="CONNECTION" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+&#x20;         <StackPanel Spacing="6">
+
+&#x20;           <TextBlock Text="Ollama base URL" FontSize="13" Foreground="#9399B2"/>
+
+&#x20;           <Border Background="#1E1E2E" BorderBrush="#45475A" BorderThickness="1" CornerRadius="8">
+
+&#x20;             <TextBox Text="{x:Bind ViewModel.OllamaUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" BorderThickness="0" Background="Transparent" Foreground="#CDD6F4" Padding="12,10"/>
+
+&#x20;           </Border>
+
+&#x20;         </StackPanel>
+
+&#x20;         <StackPanel Spacing="6">
+
+&#x20;           <TextBlock Text="Default model" FontSize="13" Foreground="#9399B2"/>
+
+&#x20;           <Border Background="#1E1E2E" BorderBrush="#45475A" BorderThickness="1" CornerRadius="8">
+
+&#x20;             <TextBox Text="{x:Bind ViewModel.DefaultModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" BorderThickness="0" Background="Transparent" Foreground="#CDD6F4" Padding="12,10"/>
+
+&#x20;           </Border>
+
+&#x20;         </StackPanel>
+
+&#x20;         <StackPanel Spacing="6">
+
+&#x20;           <TextBlock Text="CoPilot preferred model (leave blank to auto-detect code model)" FontSize="13" Foreground="#9399B2"/>
+
+&#x20;           <Border Background="#1E1E2E" BorderBrush="#45475A" BorderThickness="1" CornerRadius="8">
+
+&#x20;             <TextBox Text="{x:Bind ViewModel.CopilotModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="e.g. deepseek-coder-v2" BorderThickness="0" Background="Transparent" Foreground="#CDD6F4" Padding="12,10"/>
+
+&#x20;           </Border>
+
+&#x20;         </StackPanel>
+
+&#x20;       </StackPanel>
+
+&#x20;     </Border>
+
+&#x20;     <Border Background="#252535" BorderBrush="#313244" BorderThickness="1" CornerRadius="14" Padding="20">
+
+&#x20;       <StackPanel Spacing="14">
+
+&#x20;         <TextBlock Text="GENERATION" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+&#x20;         <StackPanel Spacing="6">
+
+&#x20;           <TextBlock Text="{x:Bind ViewModel.Temperature, Mode=OneWay, Converter={StaticResource FloatToLabelConverter}, ConverterParameter=Temperature}" FontSize="13" Foreground="#9399B2"/>
+
+&#x20;           <Slider Value="{x:Bind ViewModel.Temperature, Mode=TwoWay}" Minimum="0" Maximum="2" StepFrequency="0.05"/>
+
+&#x20;         </StackPanel>
+
+&#x20;         <StackPanel Spacing="6">
+
+&#x20;           <TextBlock Text="Stream responses" FontSize="13" Foreground="#9399B2"/>
+
+&#x20;           <ToggleSwitch IsOn="{x:Bind ViewModel.StreamResponses, Mode=TwoWay}"/>
+
+&#x20;         </StackPanel>
+
+&#x20;       </StackPanel>
+
+&#x20;     </Border>
+
+&#x20;     <Border Background="#252535" BorderBrush="#313244" BorderThickness="1" CornerRadius="14" Padding="20">
+
+&#x20;       <StackPanel Spacing="14">
+
+&#x20;         <TextBlock Text="DEFAULT SYSTEM PROMPT" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+&#x20;         <Border Background="#1E1E2E" BorderBrush="#45475A" BorderThickness="1" CornerRadius="8">
+
+&#x20;           <TextBox Text="{x:Bind ViewModel.SystemPrompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+
+&#x20;                    AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80" BorderThickness="0" Background="Transparent" Foreground="#CDD6F4" Padding="12,10"/>
+
+&#x20;         </Border>
+
+&#x20;       </StackPanel>
+
+&#x20;     </Border>
+
+&#x20;     <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
+
+&#x20;       <Button Command="{x:Bind ViewModel.SaveCommand}" CornerRadius="10" Height="40" Padding="20,0" BorderThickness="0">
+
+&#x20;         <Button.Background>
+
+&#x20;           <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+
+&#x20;             <GradientStop Color="#7C6AF7" Offset="0"/>
+
+&#x20;             <GradientStop Color="#60A5FA" Offset="1"/>
+
+&#x20;           </LinearGradientBrush>
+
+&#x20;         </Button.Background>
+
+&#x20;         <TextBlock Text="Save settings" Foreground="White" FontWeight="SemiBold"/>
+
+&#x20;       </Button>
+
+&#x20;       <TextBlock Text="{x:Bind ViewModel.SavedMessage, Mode=OneWay}" FontSize="13" Foreground="#4ADE80" VerticalAlignment="Center"/>
+
+&#x20;     </StackPanel>
+
+&#x20;   </StackPanel>
+
+&#x20; </ScrollViewer>
+
+</Page>
+
+'@ -Encoding UTF8
+
+Set-Content "$root\\Views\\SettingsPage.xaml.cs" @'
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Microsoft.UI.Xaml.Controls;
+
+using OllamaHub.ViewModels;
+
+namespace OllamaHub.Views;
+
+public sealed partial class SettingsPage : Page
+
+{
+
+&#x20;   public SettingsViewModel ViewModel { get; }
+
+&#x20;   public SettingsPage() { ViewModel = App.Services.GetRequiredService<SettingsViewModel>(); InitializeComponent(); }
+
+}
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\Views\\PromptLibraryPage.xaml" @'
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Page x:Class="OllamaHub.Views.PromptLibraryPage"
+
+&#x20;     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+
+&#x20;     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+&#x20;     xmlns:models="using:OllamaHub.Models"
+
+&#x20;     Background="#1E1E2E">
+
+&#x20; <Grid>
+
+&#x20;   <Grid.ColumnDefinitions><ColumnDefinition Width="280"/><ColumnDefinition Width="\*"/></Grid.ColumnDefinitions>
+
+&#x20;   <Border Grid.Column="0" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,1,0">
+
+&#x20;     <Grid>
+
+&#x20;       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="\*"/></Grid.RowDefinitions>
+
+&#x20;       <StackPanel Grid.Row="0" Margin="14,14,14,10" Spacing="8">
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="10">
+
+&#x20;           <Border Background="#313244" CornerRadius="8" Padding="7"><FontIcon Glyph="\&#xE8F4;" FontSize="16" Foreground="#FBBF24"/></Border>
+
+&#x20;           <TextBlock Text="Prompt Library" FontSize="15" FontWeight="SemiBold" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+
+&#x20;         </StackPanel>
+
+&#x20;         <Border Background="#313244" BorderBrush="#45475A" BorderThickness="1" CornerRadius="10">
+
+&#x20;           <TextBox PlaceholderText="Search..." Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" BorderThickness="0" Background="Transparent" Foreground="#CDD6F4" Padding="12,9"/>
+
+&#x20;         </Border>
+
+&#x20;       </StackPanel>
+
+&#x20;       <Button Grid.Row="1" Click="AddNew\_Click" HorizontalAlignment="Stretch" Margin="14,0,14,10" CornerRadius="10" Height="36" BorderThickness="0">
+
+&#x20;         <Button.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FBBF24" Offset="0"/><GradientStop Color="#F97316" Offset="1"/></LinearGradientBrush></Button.Background>
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="\&#xE710;" FontSize="13" Foreground="White"/><TextBlock Text="New Prompt" Foreground="White" FontWeight="SemiBold" FontSize="13"/></StackPanel>
+
+&#x20;       </Button>
+
+&#x20;       <ListView Grid.Row="2" x:Name="TemplateList" ItemsSource="{x:Bind ViewModel.Filtered, Mode=OneWay}" SelectionChanged="TemplateList\_SelectionChanged" Background="Transparent" Margin="6,0,6,8">
+
+&#x20;         <ListView.ItemTemplate>
+
+&#x20;           <DataTemplate x:DataType="models:PromptTemplate">
+
+&#x20;             <Border Padding="10,8" CornerRadius="8">
+
+&#x20;               <Grid ColumnSpacing="10">
+
+&#x20;                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="\*"/></Grid.ColumnDefinitions>
+
+&#x20;                 <Border Grid.Column="0" Background="#313244" CornerRadius="8" Width="32" Height="32">
+
+&#x20;                   <FontIcon Glyph="{x:Bind Icon}" FontSize="15" Foreground="#FBBF24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+&#x20;                 </Border>
+
+&#x20;                 <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+
+&#x20;                   <TextBlock Text="{x:Bind Name}" FontSize="13" FontWeight="SemiBold" Foreground="#CDD6F4" TextTrimming="CharacterEllipsis"/>
+
+&#x20;                   <TextBlock Text="{x:Bind Category}" FontSize="11" Foreground="#6C7086"/>
+
+&#x20;                 </StackPanel>
+
+&#x20;               </Grid>
+
+&#x20;             </Border>
+
+&#x20;           </DataTemplate>
+
+&#x20;         </ListView.ItemTemplate>
+
+&#x20;         <ListView.ItemContainerStyle>
+
+&#x20;           <Style TargetType="ListViewItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="CornerRadius" Value="8"/><Setter Property="Margin" Value="0,1"/><Setter Property="Padding" Value="0"/></Style>
+
+&#x20;         </ListView.ItemContainerStyle>
+
+&#x20;       </ListView>
+
+&#x20;     </Grid>
+
+&#x20;   </Border>
+
+&#x20;   <Grid Grid.Column="1" Padding="28">
+
+&#x20;     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="\*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+&#x20;     <TextBlock Grid.Row="0" Text="Edit Prompt" FontSize="22" FontWeight="Bold" Foreground="#CDD6F4" Margin="0,0,0,20"/>
+
+&#x20;     <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="16" Margin="0,0,0,14">
+
+&#x20;       <StackPanel Spacing="6" Width="220">
+
+&#x20;         <TextBlock Text="NAME" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+&#x20;         <Border Background="#313244" BorderBrush="#45475A" BorderThickness="1" CornerRadius="10">
+
+&#x20;           <TextBox Text="{x:Bind ViewModel.NewName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Prompt name..." BorderThickness="0" Background="Transparent" Foreground="#CDD6F4" Padding="12,10"/>
+
+&#x20;         </Border>
+
+&#x20;       </StackPanel>
+
+&#x20;       <StackPanel Spacing="6" Width="160">
+
+&#x20;         <TextBlock Text="CATEGORY" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+&#x20;         <ComboBox x:Name="CategoryBox" ItemsSource="{x:Bind ViewModel.Categories}" SelectedItem="{x:Bind ViewModel.NewCategory, Mode=TwoWay}" HorizontalAlignment="Stretch" Background="#313244" BorderBrush="#45475A"/>
+
+&#x20;       </StackPanel>
+
+&#x20;     </StackPanel>
+
+&#x20;     <TextBlock Grid.Row="2" Text="CONTENT" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086" Margin="0,0,0,6"/>
+
+&#x20;     <Border Grid.Row="3" Background="#313244" BorderBrush="#45475A" BorderThickness="1" CornerRadius="12">
+
+&#x20;       <TextBox Text="{x:Bind ViewModel.NewContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Write your prompt template here..." AcceptsReturn="True" TextWrapping="Wrap" BorderThickness="0" Background="Transparent" Foreground="#CDD6F4" Padding="16,14" FontFamily="Cascadia Code,Consolas,monospace" FontSize="13" VerticalAlignment="Stretch"/>
+
+&#x20;     </Border>
+
+&#x20;     <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="12" Margin="0,16,0,0">
+
+&#x20;       <Button Click="Save\_Click" CornerRadius="10" Height="38" Padding="16,0" BorderThickness="0">
+
+&#x20;         <Button.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#FBBF24" Offset="0"/><GradientStop Color="#F97316" Offset="1"/></LinearGradientBrush></Button.Background>
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="\&#xE74E;" FontSize="13" Foreground="White"/><TextBlock Text="Save" Foreground="White" FontWeight="SemiBold"/></StackPanel>
+
+&#x20;       </Button>
+
+&#x20;       <Button Click="UsePrompt\_Click" CornerRadius="10" Height="38" Padding="16,0" Background="#313244" BorderBrush="#45475A" Foreground="#CDD6F4">
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="\&#xE8BD;" FontSize="13" Foreground="#60A5FA"/><TextBlock Text="Use in Chat"/></StackPanel>
+
+&#x20;       </Button>
+
+&#x20;       <Button Click="Delete\_Click" CornerRadius="10" Height="38" Padding="16,0" Background="#2D1A1A" BorderBrush="#4A2020" Foreground="#F87171">
+
+&#x20;         <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="\&#xE74D;" FontSize="13" Foreground="#F87171"/><TextBlock Text="Delete"/></StackPanel>
+
+&#x20;       </Button>
+
+&#x20;     </StackPanel>
+
+&#x20;   </Grid>
+
+&#x20; </Grid>
+
+</Page>
+
+'@ -Encoding UTF8
+
+Set-Content "$root\\Views\\PromptLibraryPage.xaml.cs" @'
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Microsoft.UI.Xaml;
+
+using Microsoft.UI.Xaml.Controls;
+
+using OllamaHub.Models;
+
+using OllamaHub.ViewModels;
+
+namespace OllamaHub.Views;
+
+public sealed partial class PromptLibraryPage : Page
+
+{
+
+&#x20;   public PromptLibraryViewModel ViewModel { get; }
+
+&#x20;   public PromptLibraryPage() { ViewModel = App.Services.GetRequiredService<PromptLibraryViewModel>(); InitializeComponent(); }
+
+&#x20;   private void TemplateList\_SelectionChanged(object s, SelectionChangedEventArgs e) { if (TemplateList.SelectedItem is PromptTemplate t) { ViewModel.Selected=t; ViewModel.NewName=t.Name; ViewModel.NewCategory=t.Category; ViewModel.NewContent=t.Content; } }
+
+&#x20;   private void AddNew\_Click(object s, RoutedEventArgs e) { ViewModel.Selected=null; ViewModel.NewName=ViewModel.NewContent=string.Empty; ViewModel.NewCategory="General"; TemplateList.SelectedItem=null; }
+
+&#x20;   private void Save\_Click(object s, RoutedEventArgs e) { if(ViewModel.Selected!=null){ViewModel.Selected.Name=ViewModel.NewName;ViewModel.Selected.Category=ViewModel.NewCategory;ViewModel.Selected.Content=ViewModel.NewContent;ViewModel.SaveSelectedCommand.Execute(null);}else ViewModel.AddTemplateCommand.Execute(null); }
+
+&#x20;   private void Delete\_Click(object s, RoutedEventArgs e) { if(ViewModel.Selected!=null) ViewModel.DeleteTemplateCommand.Execute(ViewModel.Selected); }
+
+&#x20;   private void UsePrompt\_Click(object s, RoutedEventArgs e) { ChatPage.PendingPrompt=ViewModel.NewContent; if(Frame.Parent is Frame pf) pf.Navigate(typeof(ChatPage)); }
+
+}
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\Views\\ModelComparePage.xaml" @'
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Page x:Class="OllamaHub.Views.ModelComparePage"
+
+&#x20;     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+
+&#x20;     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+&#x20;     Background="#1E1E2E">
+
+&#x20;<Grid Padding="28" RowSpacing="16">
+
+<Grid.RowDefinitions>
+
+<RowDefinition Height="Auto"/>
+
+<RowDefinition Height="Auto"/>
+
+<RowDefinition Height="Auto"/>
+
+<RowDefinition Height="\*"/>
+
+</Grid.RowDefinitions>
+
+<StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="14">
+
+<Border Background="#313244" CornerRadius="10" Padding="10"><FontIcon Glyph="\&#xE8C4;" FontSize="22" Foreground="#60A5FA"/></Border>
+
+<StackPanel VerticalAlignment="Center" Spacing="2">
+
+<TextBlock Text="Model Comparison" FontSize="24" FontWeight="Bold" Foreground="#CDD6F4"/>
+
+<TextBlock Text="Same prompt, two models, side by side" FontSize="12" Foreground="#6C7086"/>
+
+</StackPanel>
+
+</StackPanel>
+
+<Grid Grid.Row="1" ColumnSpacing="16">
+
+<Grid.ColumnDefinitions>
+
+<ColumnDefinition Width="\*"/>
+
+<ColumnDefinition Width="\*"/>
+
+</Grid.ColumnDefinitions>
+
+<Border Grid.Column="0" Background="#181825" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="14,12">
+
+<StackPanel Spacing="6">
+
+<TextBlock Text="MODEL A" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+<ComboBox x:Name="ModelABox" ItemsSource="{x:Bind ViewModel.AvailableModels}"
+
+DisplayMemberPath="Name" SelectedIndex="0" Background="#313244" BorderBrush="#45475A"
+
+PlaceholderText="Select model A...">
+
+<ToolTipService.ToolTip><ToolTip Content="Choose the first model to compare"/></ToolTipService.ToolTip>
+
+</ComboBox>
+
+</StackPanel>
+
+</Border>
+
+<Border Grid.Column="1" Background="#181825" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="14,12">
+
+<StackPanel Spacing="6">
+
+<TextBlock Text="MODEL B" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+<ComboBox x:Name="ModelBBox" ItemsSource="{x:Bind ViewModel.AvailableModels}"
+
+DisplayMemberPath="Name" SelectedIndex="1" Background="#313244" BorderBrush="#45475A"
+
+PlaceholderText="Select model B...">
+
+<ToolTipService.ToolTip><ToolTip Content="Choose the second model to compare"/></ToolTipService.ToolTip>
+
+</ComboBox>
+
+</StackPanel>
+
+</Border>
+
+</Grid>
+
+<Border Grid.Row="2" Background="#181825" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="16,14">
+
+<StackPanel Spacing="6">
+
+<TextBlock Text="PROMPT" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+<Border Background="#313244" BorderBrush="#45475A" BorderThickness="1" CornerRadius="8">
+
+<TextBox x:Name="PromptBox" Text="{x:Bind ViewModel.Prompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+
+PlaceholderText="Enter your prompt here (both models will run the same prompt)..."
+
+AcceptsReturn="True" TextWrapping="Wrap" BorderThickness="0" Background="Transparent"
+
+Foreground="#CDD6F4" Padding="12,10" FontSize="13"/>
+
+</Border>
+
+</StackPanel>
+
+</Border>
+
+<Grid Grid.Row="3">
+
+<Grid.ColumnDefinitions>
+
+<ColumnDefinition Width="\*"/>
+
+<ColumnDefinition Width="\*"/>
+
+</Grid.ColumnDefinitions>
+
+<!-- Left: Model A output -->
+
+<Border Grid.Column="0" Margin="0,0,8,0" Background="#181825" BorderBrush="#313244" BorderThickness="1" CornerRadius="12">
+
+<Grid>
+
+<Grid.RowDefinitions>
+
+<RowDefinition Height="Auto"/>
+
+<RowDefinition Height="\*"/>
+
+<RowDefinition Height="Auto"/>
+
+</Grid.RowDefinitions>
+
+<Border Grid.Row="0" Padding="12,8" BorderBrush="#313244" BorderThickness="0,0,0,1">
+
+<Grid>
+
+<Grid.ColumnDefinitions>
+
+<ColumnDefinition Width="\*"/>
+
+<ColumnDefinition Width="Auto"/>
+
+</Grid.ColumnDefinitions>
+
+<TextBlock Text="Model A" FontSize="13" FontWeight="SemiBold" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+
+<TextBlock Grid.Column="1" Text="{x:Bind ViewModel.MsA, Converter={StaticResource MsToSecConverter}, Mode=OneWay}"
+
+FontSize="12" Foreground="#6C7086" VerticalAlignment="Center"/>
+
+</Grid>
+
+</Border>
+
+<ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="12">
+
+<TextBlock Text="{x:Bind ViewModel.ResponseA, Mode=OneWay}"
+
+TextWrapping="Wrap" FontSize="13" Foreground="#CDD6F4"
+
+IsTextSelectionEnabled="True" LineHeight="20"
+
+FontFamily="Cascadia Code,Consolas,monospace"/>
+
+</ScrollViewer>
+
+<Border Grid.Row="2" Padding="12,6" BorderBrush="#313244" BorderThickness="0,1,0,0" Background="#13131E">
+
+<TextBlock Text="{x:Bind ViewModel.TokensA, Mode=OneWay, StringFormat='{}{0} tokens'}"
+
+FontSize="11" Foreground="#6C7086" HorizontalAlignment="Right"/>
+
+</Border>
+
+</Grid>
+
+</Border>
+
+<!-- Right: Model B output -->
+
+<Border Grid.Column="1" Margin="8,0,0,0" Background="#181825" BorderBrush="#313244" BorderThickness="1" CornerRadius="12">
+
+<Grid>
+
+<Grid.RowDefinitions>
+
+<RowDefinition Height="Auto"/>
+
+<RowDefinition Height="\*"/>
+
+<RowDefinition Height="Auto"/>
+
+</Grid.RowDefinitions>
+
+<Border Grid.Row="0" Padding="12,8" BorderBrush="#313244" BorderThickness="0,0,0,1">
+
+<Grid>
+
+<Grid.ColumnDefinitions>
+
+<ColumnDefinition Width="\*"/>
+
+<ColumnDefinition Width="Auto"/>
+
+</Grid.ColumnDefinitions>
+
+<TextBlock Text="Model B" FontSize="13" FontWeight="SemiBold" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+
+<TextBlock Grid.Column="1" Text="{x:Bind ViewModel.MsB, Converter={StaticResource MsToSecConverter}, Mode=OneWay}"
+
+FontSize="12" Foreground="#6C7086" VerticalAlignment="Center"/>
+
+</Grid>
+
+</Border>
+
+<ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="12">
+
+<TextBlock Text="{x:Bind ViewModel.ResponseB, Mode=OneWay}"
+
+TextWrapping="Wrap" FontSize="13" Foreground="#CDD6F4"
+
+IsTextSelectionEnabled="True" LineHeight="20"
+
+FontFamily="Cascadia Code,Consolas,monospace"/>
+
+</ScrollViewer>
+
+<Border Grid.Row="2" Padding="12,6" BorderBrush="#313244" BorderThickness="0,1,0,0" Background="#13131E">
+
+<TextBlock Text="{x:Bind ViewModel.TokensB, Mode=OneWay, StringFormat='{}{0} tokens'}"
+
+FontSize="11" Foreground="#6C7086" HorizontalAlignment="Right"/>
+
+</Border>
+
+</Grid>
+
+</Border>
+
+</Grid>
+
+<Border Grid.Row="3" Background="#181825" BorderBrush="#313244" BorderThickness="0,1,0,0" Padding="0,12,0,12" HorizontalAlignment="Stretch">
+
+<Grid>
+
+<Grid.ColumnDefinitions>
+
+<ColumnDefinition Width="\*"/>
+
+<ColumnDefinition Width="Auto"/>
+
+<ColumnDefinition Width="Auto"/>
+
+</Grid.ColumnDefinitions>
+
+<TextBlock Grid.Column="0" Text="{x:Bind ViewModel.StatusText, Mode=OneWay}" FontSize="12" Foreground="#6C7086" Margin="0,0,12,0"/>
+
+<Button Grid.Column="1" Click="ClearAll\_Click" Content="Clear" HorizontalAlignment="Right"
+
+CornerRadius="8" Height="36" Background="#313244" BorderBrush="#45475A" Margin="0,0,12,0"/>
+
+<Button Grid.Column="2" Command="{x:Bind ViewModel.RunCompareCommand}" CornerRadius="8" Height="36" Padding="16,0"
+
+IsEnabled="{x:Bind ViewModel.IsRunning, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
+
+BorderThickness="0">
+
+<Button.Background>
+
+<LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+
+<GradientStop Color="#7C6AF7" Offset="0"/>
+
+<GradientStop Color="#60A5FA" Offset="1"/>
+
+</LinearGradientBrush>
+
+</Button.Background>
+
+<TextBlock Text="Run Comparison" Foreground="White" FontWeight="SemiBold" FontSize="13"/>
+
+</Button>
+
+</Grid>
+
+</Border>
+
+</Grid>
+
+</Page>
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\Views\\ModelComparePage.xaml.cs" @'
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Microsoft.UI.Xaml;
+
+using Microsoft.UI.Xaml.Controls;
+
+using OllamaHub.ViewModels;
+
+namespace OllamaHub.Views;
+
+public sealed partial class ModelComparePage : Page
+
+{
+
+public ModelCompareViewModel ViewModel { get; }
+
+public ModelComparePage()
+
+{
+
+ViewModel = App.Services.GetRequiredService<ModelCompareViewModel>();
+
+InitializeComponent();
+
+}
+
+private void ClearAll\_Click(object sender, RoutedEventArgs e) => ViewModel.ClearAllCommand.Execute(null);
+
+}
+
+'@ -Encoding UTF8
+
+Write-Ok "ModelComparePage"
+
+
+
+\# ── PerformancePage ───────────────────────────────────────────────────────────
+
+Write-Step "Writing Views\\PerformancePage.xaml"
+
+Set-Content "$root\\Views\\PerformancePage.xaml" @'
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Page x:Class="OllamaHub.Views.PerformancePage"
+
+xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+
+xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+xmlns:models="using:OllamaHub.Models"
+
+Background="#1E1E2E">
+
+<Grid>
+
+<Grid.RowDefinitions>
+
+<RowDefinition Height="Auto"/>
+
+<RowDefinition Height="\*"/>
+
+</Grid.RowDefinitions>
+
+<Border Grid.Row="0" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,0,1" Padding="28,18">
+
+<Grid>
+
+<Grid.ColumnDefinitions>
+
+<ColumnDefinition Width="\*"/>
+
+<ColumnDefinition Width="Auto"/>
+
+</Grid.ColumnDefinitions>
+
+<StackPanel Grid.Column="0" Spacing="4">
+
+<StackPanel Orientation="Horizontal" Spacing="12">
+
+<Border Background="#313244" CornerRadius="8" Padding="8"><FontIcon Glyph="\&#xE9D9;" FontSize="18" Foreground="#4ADE80"/></Border>
+
+<TextBlock Text="Performance Dashboard" FontSize="24" FontWeight="Bold" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+
+</StackPanel>
+
+<TextBlock Text="Live metrics for your Ollama sessions" FontSize="13" Foreground="#6C7086" Margin="0,4,0,0"/>
+
+</StackPanel>
+
+<Button Grid.Column="1" Command="{x:Bind ViewModel.CheckStatusCommand}" CornerRadius="10" Height="42" Padding="14,0" Background="#313244" BorderBrush="#45475A">
+
+<ToolTipService.ToolTip><ToolTip Content="Check Ollama status"/></ToolTipService.ToolTip>
+
+<FontIcon Glyph="\&#xE72C;" FontSize="16" Foreground="#CDD6F4"/>
+
+</Button>
+
+</Grid>
+
+</Border>
+
+<ScrollViewer Grid.Row="1" Padding="28,20">
+
+<Grid RowSpacing="20">
+
+<Grid.RowDefinitions>
+
+<RowDefinition Height="Auto"/>
+
+<RowDefinition Height="Auto"/>
+
+<RowDefinition Height="Auto"/>
+
+<RowDefinition Height="Auto"/>
+
+<RowDefinition Height="\*"/>
+
+</Grid.RowDefinitions>
+
+<!-- Summary cards -->
+
+<Grid ColumnSpacing="16">
+
+<Grid.ColumnDefinitions>
+
+<ColumnDefinition Width="\*"/>
+
+<ColumnDefinition Width="\*"/>
+
+<ColumnDefinition Width="\*"/>
+
+</Grid.ColumnDefinitions>
+
+<Border Background="#252535" BorderBrush="#313244" BorderThickness="1" CornerRadius="14" Padding="20,18">
+
+<StackPanel Spacing="8">
+
+<TextBlock Text="TOKENS/SEC" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+<TextBlock Text="{x:Bind ViewModel.CurrentTps, Mode=OneWay, StringFormat='{}{0:N1}'}" FontSize="24" FontWeight="Bold" Foreground="#4ADE80"/>
+
+<TextBlock Text="Current tokens per second" FontSize="11" Foreground="#6C7086"/>
+
+</StackPanel>
+
+</Border>
+
+<Border Background="#252535" BorderBrush="#313244" BorderThickness="1" CornerRadius="14" Padding="20,18">
+
+<StackPanel Spacing="8">
+
+<TextBlock Text="LATENCY" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+<TextBlock Text="{x:Bind ViewModel.AvgLatencyMs, Mode=OneWay, StringFormat='{}{0:N0} ms'}" FontSize="24" FontWeight="Bold" Foreground="#60A5FA"/>
+
+<TextBlock Text="Average response latency" FontSize="11" Foreground="#6C7086"/>
+
+</StackPanel>
+
+</Border>
+
+<Border Background="#252535" BorderBrush="#313244" BorderThickness="1" CornerRadius="14" Padding="20,18">
+
+<StackPanel Spacing="8">
+
+<TextBlock Text="SAVINGS" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+<TextBlock Text="{x:Bind ViewModel.EstimatedSavings, Mode=OneWay, StringFormat='{}${0:N2}'}" FontSize="24" FontWeight="Bold" Foreground="#F472B6"/>
+
+<TextBlock Text="Estimated cost savings" FontSize="11" Foreground="#6C7086"/>
+
+</StackPanel>
+
+</Border>
+
+</Grid>
+
+<!-- Stats -->
+
+<Grid ColumnSpacing="16">
+
+<Grid.ColumnDefinitions>
+
+<ColumnDefinition Width="\*"/>
+
+<ColumnDefinition Width="\*"/>
+
+</Grid.ColumnDefinitions>
+
+<Border Background="#252535" BorderBrush="#313244" BorderThickness="1" CornerRadius="14" Padding="20,18">
+
+<StackPanel Spacing="8">
+
+<TextBlock Text="TOKENS" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+<TextBlock Text="{x:Bind ViewModel.TotalTokens, Mode=OneWay}" FontSize="24" FontWeight="Bold" Foreground="#FBBF24"/>
+
+<TextBlock Text="Total tokens generated" FontSize="11" Foreground="#6C7086"/>
+
+</StackPanel>
+
+</Border>
+
+<Border Background="#252535" BorderBrush="#313244" BorderThickness="1" CornerRadius="14" Padding="20,18">
+
+<StackPanel Spacing="8">
+
+<TextBlock Text="UPTIME" FontSize="10" FontWeight="SemiBold" CharacterSpacing="120" Foreground="#6C7086"/>
+
+<TextBlock Text="{x:Bind ViewModel.UptimeMinutes, Mode=OneWay, StringFormat='{}{0:N1} min'}" FontSize="24" FontWeight="Bold" Foreground="#2DD4BF"/>
+
+<TextBlock Text="Total uptime" FontSize="11" Foreground="#6C7086"/>
+
+</StackPanel>
+
+</Border>
+
+</Grid>
+
+<!-- Samples -->
+
+<Border Background="#252535" BorderBrush="#313244" BorderThickness="1" CornerRadius="14" Padding="20">
+
+<Grid>
+
+<Grid.RowDefinitions>
+
+<RowDefinition Height="Auto"/>
+
+<RowDefinition Height="Auto"/>
+
+<RowDefinition Height="\*"/>
+
+</Grid.RowDefinitions>
+
+<TextBlock Text="RECENT SAMPLES" FontSize="12" FontWeight="SemiBold" Foreground="#CDD6F4" Margin="0,0,0,10"/>
+
+<Border Height="1" Background="#45475A" Margin="0,0,0,10"/>
+
+<ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="0,5,0,0">
+
+<ItemsControl ItemsSource="{x:Bind ViewModel.Samples, Mode=OneWay}">
+
+<ItemsControl.ItemTemplate>
+
+<DataTemplate x:DataType="models:PerformanceSample">
+
+<Border Background="#1E1E2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,8">
+
+<Grid>
+
+<Grid.ColumnDefinitions>
+
+<ColumnDefinition Width="\*"/>
+
+<ColumnDefinition Width="Auto"/>
+
+</Grid.ColumnDefinitions>
+
+<StackPanel Grid.Column="0" Spacing="4">
+
+<TextBlock Text="{x:Bind ModelName}" FontSize="13" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+
+<TextBlock Text="{x:Bind Timestamp, Converter={StaticResource DateToTextConverter}, Mode=OneWay}" FontSize="11" Foreground="#6C7086"/>
+
+</StackPanel>
+
+<StackPanel Grid.Column="1" Spacing="4" HorizontalAlignment="Right">
+
+<TextBlock Text="{x:Bind TokensPerSec, Mode=OneWay, StringFormat='{}{0:N1} t/s'}" FontSize="12" Foreground="#4ADE80"/>
+
+<TextBlock Text="{x:Bind LatencyMs, Mode=OneWay, StringFormat='{}{0:N0} ms'}" FontSize="12" Foreground="#60A5FA"/>
+
+</StackPanel>
+
+</Grid>
+
+</Border>
+
+</DataTemplate>
+
+</ItemsControl.ItemTemplate>
+
+</ItemsControl>
+
+</ScrollViewer>
+
+</Grid>
+
+</Border>
+
+</Grid>
+
+</ScrollViewer>
+
+</Grid>
+
+</Page>
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\Views\\PerformancePage.xaml.cs" @'
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Microsoft.UI.Xaml.Controls;
+
+using OllamaHub.ViewModels;
+
+namespace OllamaHub.Views;
+
+public sealed partial class PerformancePage : Page
+
+{
+
+public PerformanceViewModel ViewModel { get; }
+
+public PerformancePage()
+
+{
+
+ViewModel = App.Services.GetRequiredService<PerformanceViewModel>();
+
+InitializeComponent();
+
+}
+
+}
+
+'@ -Encoding UTF8
+
+Write-Ok "PerformancePage"
+
+
+
+\# ── TerminalPage ──────────────────────────────────────────────────────────────
+
+Write-Step "Writing Views\\TerminalPage.xaml"
+
+Set-Content "$root\\Views\\TerminalPage.xaml" @'
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Page x:Class="OllamaHub.Views.TerminalPage"
+
+xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+
+xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+Background="#1E1E2E">
+
+<Grid>
+
+<Grid.RowDefinitions>
+
+<RowDefinition Height="Auto"/>
+
+<RowDefinition Height="\*"/>
+
+<RowDefinition Height="Auto"/>
+
+</Grid.RowDefinitions>
+
+<Border Grid.Row="0" Background="#181825" BorderBrush="#313244" BorderThickness="0,0,0,1" Padding="28,14">
+
+<Grid>
+
+<Grid.ColumnDefinitions>
+
+<ColumnDefinition Width="\*"/>
+
+<ColumnDefinition Width="Auto"/>
+
+</Grid.ColumnDefinitions>
+
+<StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
+
+<Border Background="#313244" CornerRadius="8" Padding="8"><FontIcon Glyph="\&#xE756;" FontSize="18" Foreground="#A6E3A1"/></Border>
+
+<TextBlock Text="Terminal" FontSize="20" FontWeight="Bold" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+
+</StackPanel>
+
+<Button Grid.Column="1" Click="ClearOutput\_Click" CornerRadius="10" Height="36" Padding="14,0"
+
+Background="#313244" BorderBrush="#45475A" Foreground="#CDD6F4">
+
+<StackPanel Orientation="Horizontal" Spacing="6">
+
+<FontIcon Glyph="\&#xE74D;" FontSize="13" Foreground="#F87171"/>
+
+<TextBlock Text="Clear"/>
+
+</StackPanel>
+
+</Button>
+
+</Grid>
+
+</Border>
+
+<ScrollViewer Grid.Row="1" Padding="28,20" Background="#1E1E2E" BorderBrush="#313244" BorderThickness="0,0,0,1">
+
+<TextBlock x:Name="OutputBox" TextWrapping="Wrap" FontSize="13" Foreground="#CDD6F4"
+
+FontFamily="Cascadia Code,Consolas,monospace" LineHeight="20"/>
+
+</ScrollViewer>
+
+<Border Grid.Row="2" Background="#181825" BorderBrush="#313244" BorderThickness="0,1,0,0" Padding="28,12">
+
+<Grid ColumnSpacing="10">
+
+<Grid.ColumnDefinitions>
+
+<ColumnDefinition Width="Auto"/>
+
+<ColumnDefinition Width="\*"/>
+
+<ColumnDefinition Width="Auto"/>
+
+</Grid.ColumnDefinitions>
+
+<TextBlock Grid.Column="0" Text="$" FontSize="14" Foreground="#6C7086" VerticalAlignment="Center"/>
+
+<Border Grid.Column="1" Background="#313244" BorderBrush="#45475A" BorderThickness="1" CornerRadius="10">
+
+<TextBox x:Name="CommandBox"
+
+TextChanged="CommandBox\_TextChanged" KeyDown="CommandBox\_KeyDown"
+
+PlaceholderText="Type command..." BorderThickness="0" Background="Transparent"
+
+Foreground="#CDD6F4" Padding="12,10" FontSize="13"
+
+FontFamily="Cascadia Code,Consolas,monospace"/>
+
+</Border>
+
+<Button Grid.Column="2" Click="RunCommand\_Click" CornerRadius="10" Height="40" Padding="14,0"
+
+IsEnabled="{x:Bind CommandBox.Text.Length, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
+
+BorderThickness="0">
+
+<Button.Background>
+
+<LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+
+<GradientStop Color="#7C6AF7" Offset="0"/>
+
+<GradientStop Color="#60A5FA" Offset="1"/>
+
+</LinearGradientBrush>
+
+</Button.Background>
+
+<TextBlock Text="Run" Foreground="White" FontWeight="SemiBold" FontSize="13"/>
+
+</Button>
+
+</Grid>
+
+</Border>
+
+</Grid>
+
+</Page>
+
+'@ -Encoding UTF8
+
+
+
+Set-Content "$root\\Views\\TerminalPage.xaml.cs" @'
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Microsoft.UI.Xaml;
+
+using Microsoft.UI.Xaml.Controls;
+
+using OllamaHub.ViewModels;
+
+namespace OllamaHub.Views;
+
+public sealed partial class TerminalPage : Page
+
+{
+
+public TerminalViewModel ViewModel { get; }
+
+public TerminalPage()
+
+{
+
+ViewModel = App.Services.GetRequiredService<TerminalViewModel>();
+
+InitializeComponent();
+
+}
+
+private void CommandBox\_TextChanged(object sender, TextChangedEventArgs e)
+
+{
+
+ViewModel.InputCommand = CommandBox.Text;
+
+}
+
+private void CommandBox\_KeyDown(object sender, KeyRoutedEventArgs e)
+
+{
+
+if (e.Key == Windows.System.VirtualKey.Up)
+
+{
+
+ViewModel.HistoryUp();
+
+CommandBox.Text = ViewModel.InputCommand;
+
+CommandBox.SelectionStart = ViewModel.InputCommand.Length;
+
+}
+
+else if (e.Key == Windows.System.VirtualKey.Down)
+
+{
+
+ViewModel.HistoryDown();
+
+CommandBox.Text = ViewModel.InputCommand;
+
+CommandBox.SelectionStart = ViewModel.InputCommand.Length;
+
+}
+
+else if (e.Key == Windows.System.VirtualKey.Enter)
+
+{
+
+RunCommand\_Click(sender, e);
+
+e.Handled = true;
+
+}
+
+}
+
+private async void RunCommand\_Click(object sender, RoutedEventArgs e)
+
+{
+
+await ViewModel.RunCommandAsync();
+
+OutputBox.Text = ViewModel.OutputText;
+
+CommandBox.Text = string.Empty;
+
+}
+
+private void ClearOutput\_Click(object sender, RoutedEventArgs e)
+
+{
+
+ViewModel.ClearOutputCommand.Execute(null);
+
+OutputBox.Text = string.Empty;
+
+}
+
+}
+
+'@ -Encoding UTF8
+
+Write-Ok "TerminalPage"
+
+
+
+\# ── INNO SETUP SCRIPT ────────────────────────────────────────────────────────
+
+Write-Step "Generating Inno Setup installer script"
+
+$innoScript = @'
+
+; OllamaHub Installer
+
+; Run with: "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe" OllamaHub.iss
+
+
+
+\[Setup]
+
+AppName=OllamaHub
+
+AppVersion=3.0
+
+AppPublisher=Cody
+
+AppPublisherURL=https://github.com/yourusername/OllamaHub
+
+DefaultDirName={pf}\\OllamaHub
+
+DefaultGroupName=OllamaHub
+
+OutputDir=.\\installer
+
+OutputBaseFilename=OllamaHub-Setup
+
+Compression=lzma
+
+SolidCompression=yes
+
+PrivilegesRequired=lowest
+
+AllowNoIcons=yes
+
+WizardStyle=modern
+
+
+
+\[Files]
+
+Source: "C:\\Users\\Cody\\source\\repos\\OllamaHub\\OllamaHub\\bin\\Release\\net8.0-windows10.0.22621.0\\win-x64\\publish\\\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+Source: "C:\\Users\\Cody\\source\\repos\\OllamaHub\\OllamaHub\\bin\\Release\\net8.0-windows10.0.22621.0\\win-x64\\publish\\OllamaHub.exe"; DestDir: "{app}"; Flags: ignoreversion
+
+
+
+\[Icons]
+
+Name: "{group}\\OllamaHub"; Filename: "{app}\\OllamaHub.exe"
+
+Name: "{group}\\Uninstall OllamaHub"; Filename: "{uninstallexe}"
+
+
+
+\[Run]
+
+Filename: "{app}\\OllamaHub.exe"; Description: "Launch OllamaHub"; Flags: nowait postinstall skipifsilent
+
+'@
+
+
+
+Set-Content "$base\\OllamaHub-Installer.iss" $innoScript -Encoding UTF8
+
+Write-Ok "Inno Setup installer script (OllamaHub-Installer.iss) - run ISCC.exe to build"
+
+
+
+\# ── FINALIZE ──────────────────────────────────────────────────────────────────
+
+Write-Host "`n" -NoNewline
+
+Write-Host " BUILD COMPLETE" -ForegroundColor Green
+
+Write-Host " ✅ All files generated successfully" -ForegroundColor Green
+
+Write-Host " 📦 Installer script created: $base\\OllamaHub-Installer.iss" -ForegroundColor Cyan
+
+Write-Host " 💡 To build the installer, run: ISCC.exe OllamaHub-Installer.iss" -ForegroundColor Cyan
+
+Write-Host " 🚀 Run the app: $root\\bin\\Release\\net8.0-windows10.0.22621.0\\win-x64\\OllamaHub.exe" -ForegroundColor Cyan
+
+Write-Host " 🌟 OllamaHub v3.0 - the ultimate local AI hub" -ForegroundColor Magenta
+
+Write-Host "`n"
+
+
+
+\# ── POWERSHELL INSTRUCTIONS ──────────────────────────────────────────────────
+
+Write-Host "PowerShell execution instructions:" -ForegroundColor Yellow
+
+Write-Host "1. Open PowerShell as Administrator"
+
+Write-Host "2. Run this command to bypass execution policy:"
+
+Write-Host " Set-ExecutionPolicy Bypass -Scope CurrentUser" -ForegroundColor Green
+
+Write-Host "3. Navigate to your repository:"
+
+Write-Host " cd C:\\Users\\Cody\\source\\repos\\OllamaHub" -ForegroundColor Green
+
+Write-Host "4. Run the build script:"
+
+Write-Host " .\\Build.ps1" -ForegroundColor Green
+
+Write-Host "5. After building, run the app from:"
+
+Write-Host " .\\OllamaHub\\bin\\Release\\net8.0-windows10.0.22621.0\\win-x64\\OllamaHub.exe" -ForegroundColor Green
+
+Write-Host ""
+
+Write-Host "To build the installer:"
+
+Write-Host "1. Install Inno Setup (free) from: https://jrsoftware.org/isdl.php"
+
+Write-Host "2. Run the generated installer script:"
+
+Write-Host " C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe OllamaHub-Installer.iss" -ForegroundColor Green
+
+Write-Host ""
+
+Write-Host "Note: To run without PowerShell window (fixed in app.manifest), build with:"
+
+Write-Host " dotnet publish -c Release -r win-x64" -ForegroundColor Green
+
+Write-Host ""
+
+Write-Host "If you need to run the app without rebuilding:"
+
+Write-Host "1. Make sure Ollama is running (ollama serve)"
+
+Write-Host "2. Launch the app from the Release directory" -ForegroundColor Green
+
+Write-Host ""
+
+Write-Host "For any issues, check:"
+
+Write-Host "1. Ollama is running (check status in top-left of app)"
+
+Write-Host "2. Models are pulled (use Models tab)"
+
+Write-Host "3. Check Settings for correct Ollama URL" -ForegroundColor Green
+
+Write-Host ""
+
+Write-Host "To uninstall:" -ForegroundColor Yellow
+
+Write-Host "1. Use the uninstaller created in the installer output directory"
+
+Write-Host "2. Or delete the OllamaHub folder and remove the settings in:"
+
+Write-Host " C:\\Users\\Cody\\AppData\\Local\\OllamaHub" -ForegroundColor Green
+
+'@
+
+
+
+

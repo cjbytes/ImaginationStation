@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="OllamaHub.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="OllamaHub"
+    MinWidth="1000" MinHeight="700">
+
+    <Grid>
+        <NavigationView x:Name="NavView"
+                        IsPaneOpen="True"
+                        PaneDisplayMode="LeftMinimal"
+                        IsBackButtonVisible="Collapsed"
+                        OpenPaneLength="48"
+                        SelectionFollowsFocus="Disabled"
+                        Background="{ThemeResource LayerFillColorDefaultBrush}">
+
+            <!-- Compact pane header -->
+            <NavigationView.PaneHeader>
+                <StackPanel Margin="8,12,8,8" Spacing="4">
+                    <FontIcon Glyph="&#xE99A;" FontSize="20"
+                              Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Ellipse x:Name="StatusDot" Width="6" Height="6"
+                                 Fill="Gray" />
+                        <TextBlock x:Name="StatusLabel"
+                                   Text="Checking..."
+                                   FontSize="11"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </StackPanel>
+            </NavigationView.PaneHeader>
+
+            <NavigationView.MenuItems>
+                <NavigationViewItem Tag="Chat" Content="Chat">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE8BD;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Tag="Models" Content="Models">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE77B;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Tag="History" Content="History">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE81C;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem Tag="Settings" Content="Settings">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE713;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.FooterMenuItems>
+
+            <Frame x:Name="ContentFrame" />
+        </NavigationView>
+    </Grid>
+</Window>

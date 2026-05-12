@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="OllamaHub.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="Transparent">
+
+    <ScrollViewer>
+        <StackPanel Margin="24" Spacing="24" MaxWidth="720">
+
+            <TextBlock Text="Settings" FontSize="28" FontWeight="Bold" />
+
+            <!-- Connection -->
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Connection" FontSize="16" FontWeight="SemiBold" />
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Ollama Base URL" FontSize="13" />
+                        <TextBox Text="{x:Bind ViewModel.OllamaUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 PlaceholderText="http://localhost:11434" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Model Defaults -->
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Model Defaults" FontSize="16" FontWeight="SemiBold" />
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Default System Prompt" FontSize="13" />
+                        <TextBox Text="{x:Bind ViewModel.DefaultSystemPrompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 PlaceholderText="You are a helpful assistant..."
+                                 AcceptsReturn="True" MaxHeight="100" TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="{x:Bind ViewModel.Temperature, Mode=OneWay, Converter={StaticResource FloatToLabelConverter}, ConverterParameter='Temperature'}" FontSize="13" />
+                        <Slider Minimum="0" Maximum="2" StepFrequency="0.05"
+                                Value="{x:Bind ViewModel.Temperature, Mode=TwoWay}" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Max Tokens" FontSize="13" />
+                        <NumberBox Value="{x:Bind ViewModel.MaxTokens, Mode=TwoWay}"
+                                   Minimum="128" Maximum="32768" SpinButtonPlacementMode="Inline" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="{x:Bind ViewModel.TopP, Mode=OneWay, Converter={StaticResource FloatToLabelConverter}, ConverterParameter='Top P'}" FontSize="13" />
+                        <Slider Minimum="0" Maximum="1" StepFrequency="0.05"
+                                Value="{x:Bind ViewModel.TopP, Mode=TwoWay}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Appearance -->
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Appearance" FontSize="16" FontWeight="SemiBold" />
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Theme" FontSize="13" />
+                        <ComboBox ItemsSource="{x:Bind ViewModel.Themes}"
+                                  SelectedItem="{x:Bind ViewModel.Theme, Mode=TwoWay}" />
+                    </StackPanel>
+                    <ToggleSwitch Header="Stream Responses"
+                                  IsOn="{x:Bind ViewModel.StreamResponses, Mode=TwoWay}" />
+                    <ToggleSwitch Header="Send with Enter (Shift+Enter for newline)"
+                                  IsOn="{x:Bind ViewModel.SendWithEnter, Mode=TwoWay}" />
+                    <ToggleSwitch Header="Show Timestamps"
+                                  IsOn="{x:Bind ViewModel.ShowTimestamps, Mode=TwoWay}" />
+                    <ToggleSwitch Header="Show Token Stats"
+                                  IsOn="{x:Bind ViewModel.ShowTokenStats, Mode=TwoWay}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Save -->
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Command="{x:Bind ViewModel.SaveCommand}"
+                        Style="{ThemeResource AccentButtonStyle}"
+                        Content="Save Settings" />
+                <Button Command="{x:Bind ViewModel.ResetCommand}"
+                        Content="Reset to Defaults" />
+            </StackPanel>
+
+            <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                       FontSize="13" />
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

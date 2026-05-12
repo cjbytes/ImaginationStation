@@ -1,0 +1,124 @@
+<Page
+    x:Class="OllamaHub.Views.GuidePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <Grid Background="{StaticResource Surface0Brush}" Padding="32">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,24">
+            <TextBlock Text="📖 Guide" Style="{StaticResource HeaderText}"/>
+            <TextBlock Text="Learn how to use OllamaHub effectively" 
+                       Style="{StaticResource BodyText}"
+                       Margin="0,8,0,0"/>
+        </StackPanel>
+        
+        <!-- Guide Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="24">
+                
+                <!-- Getting Started -->
+                <Border Style="{StaticResource CardStyle}">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="🚀 Getting Started" Style="{StaticResource SubheaderText}"/>
+                        <StackPanel Spacing="12">
+                            <TextBlock TextWrapping="Wrap" Style="{StaticResource BodyText}">
+                                <Run Text="1. Install Ollama:"/>
+                                <LineBreak/>
+                                <Run Text="   Download from ollama.ai and install" Foreground="{StaticResource TextTertiaryBrush}"/>
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Style="{StaticResource BodyText}">
+                                <Run Text="2. Pull Models:"/>
+                                <LineBreak/>
+                                <Run Text="   Run 'ollama pull llama2' in terminal" Foreground="{StaticResource TextTertiaryBrush}"/>
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Style="{StaticResource BodyText}">
+                                <Run Text="3. Start Chatting:"/>
+                                <LineBreak/>
+                                <Run Text="   Navigate to Chat tab and select a model" Foreground="{StaticResource TextTertiaryBrush}"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Keyboard Shortcuts -->
+                <Border Style="{StaticResource CardStyle}">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="⌨️ Keyboard Shortcuts" Style="{StaticResource SubheaderText}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="200"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Ctrl + N" Style="{StaticResource BodyText}"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="New Chat" Foreground="{StaticResource TextTertiaryBrush}"/>
+                            
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Ctrl + Enter" Style="{StaticResource BodyText}" Margin="0,8,0,0"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="Send Message" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,8,0,0"/>
+                            
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Ctrl + K" Style="{StaticResource BodyText}" Margin="0,8,0,0"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="Clear Chat" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,8,0,0"/>
+                            
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Ctrl + ," Style="{StaticResource BodyText}" Margin="0,8,0,0"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="Open Settings" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,8,0,0"/>
+                            
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="F1" Style="{StaticResource BodyText}" Margin="0,8,0,0"/>
+                            <TextBlock Grid.Row="4" Grid.Column="1" Text="Show Guide" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,8,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Tips & Tricks -->
+                <Border Style="{StaticResource CardStyle}">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="💡 Tips & Tricks" Style="{StaticResource SubheaderText}"/>
+                        <StackPanel Spacing="12">
+                            <TextBlock TextWrapping="Wrap" Style="{StaticResource BodyText}">
+                                <Run Text="• Use Personas for consistent character responses"/>
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Style="{StaticResource BodyText}">
+                                <Run Text="• Batch processing helps compare model outputs"/>
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Style="{StaticResource BodyText}">
+                                <Run Text="• Chain multiple steps for complex workflows"/>
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Style="{StaticResource BodyText}">
+                                <Run Text="• Lower temperature (0.1-0.3) for factual tasks"/>
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Style="{StaticResource BodyText}">
+                                <Run Text="• Higher temperature (0.7-0.9) for creative writing"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                
+                <!-- About -->
+                <Border Style="{StaticResource CardStyle}">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="ℹ️ About OllamaHub" Style="{StaticResource SubheaderText}"/>
+                        <TextBlock TextWrapping="Wrap" Style="{StaticResource BodyText}">
+                            <Run Text="Version: 1.0.0"/>
+                            <LineBreak/>
+                            <Run Text="Built with WinUI 3 and .NET 8"/>
+                            <LineBreak/>
+                            <Run Text="For Ollama local AI models"/>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+                
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

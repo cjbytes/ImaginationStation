@@ -1,0 +1,69 @@
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using OllamaHub.Services;
+using OllamaHub.ViewModels;
+using OllamaHub.Views;
+
+namespace OllamaHub;
+
+public sealed partial class MainWindow : Window
+{
+    private readonly MainViewModel _vm;
+    private readonly ThemeService _theme;
+
+    public MainWindow()
+    {
+        InitializeComponent();
+
+        _vm   = App.Services.GetRequiredService<MainViewModel>();
+        _theme = App.Services.GetRequiredService<ThemeService>();
+
+        NavView.SelectionChanged += OnNavSelectionChanged;
+        NavView.SelectedItem = NavView.MenuItems[0];
+
+        // Hook status updates
+        _vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MainViewModel.OllamaOnline))
+                UpdateStatusIndicator();
+        };
+        UpdateStatusIndicator();
+
+        _theme.Apply(this);
+    }
+
+    private void UpdateStatusIndicator()
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_vm.OllamaOnline)
+            {
+                StatusDot.Fill = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+                    Microsoft.UI.Color.FromArgb(255, 52, 199, 89));
+                StatusLabel.Text = "Ollama Connected";
+            }
+            else
+            {
+                StatusDot.Fill = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+                    Microsoft.UI.Color.FromArgb(255, 255, 69, 58));
+                StatusLabel.Text = "Ollama Offline";
+            }
+        });
+    }
+
+    private void OnNavSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+    {
+        if (args.SelectedItem is NavigationViewItem item)
+        {
+            ContentFrame.Navigate(item.Tag?.ToString() switch
+            {
+                "Chat"     => typeof(ChatPage),
+                "Models"   => typeof(ModelsPage),
+                "History"  => typeof(HistoryPage),   // <-- new page
+                "Settings" => typeof(SettingsPage),
+                _          => typeof(ChatPage)
+            });
+        }
+    }
+}

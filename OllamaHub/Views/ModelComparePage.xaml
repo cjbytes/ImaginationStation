@@ -1,0 +1,195 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Page x:Class="OllamaHub.Views.ModelComparePage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Background="#0F0F13">
+  <Grid Padding="28" RowSpacing="16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <!-- Header -->
+    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="14">
+      <Border Background="#22FFFFFF" CornerRadius="10" Padding="10">
+        <FontIcon Glyph="&#xE8EF;" FontSize="22" Foreground="#8A63FF"/>
+      </Border>
+      <StackPanel VerticalAlignment="Center" Spacing="2">
+        <TextBlock Text="Model Comparison" FontSize="24" FontWeight="Bold" Foreground="#EEEEFF"/>
+        <TextBlock Text="Run the same prompt on two models simultaneously"
+                   FontSize="12" Foreground="#555577"/>
+      </StackPanel>
+    </StackPanel>
+
+    <!-- Model pickers -->
+    <Grid Grid.Row="1" ColumnSpacing="16">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+      <Border Grid.Column="0" Background="#1A1A24" BorderBrush="#3A3AFF"
+              BorderThickness="1" CornerRadius="12" Padding="16,12">
+        <StackPanel Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Border Background="#22FFFFFF" CornerRadius="6" Padding="5">
+              <FontIcon Glyph="&#xE77B;" FontSize="13" Foreground="#8A63FF"/>
+            </Border>
+            <TextBlock Text="MODEL A" FontSize="11" FontWeight="SemiBold"
+                       CharacterSpacing="120" Foreground="#8A63FF" VerticalAlignment="Center"/>
+          </StackPanel>
+          <ComboBox x:Name="ModelABox" HorizontalAlignment="Stretch"
+                    ItemsSource="{x:Bind ViewModel.AvailableModels}"
+                    DisplayMemberPath="Name" SelectedIndex="0"
+                    Background="#13131A" BorderBrush="#2A2A3A"
+                    PlaceholderText="Select model A..."/>
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="1" Background="#1A1A24" BorderBrush="#2A8AFF"
+              BorderThickness="1" CornerRadius="12" Padding="16,12">
+        <StackPanel Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Border Background="#22FFFFFF" CornerRadius="6" Padding="5">
+              <FontIcon Glyph="&#xE77B;" FontSize="13" Foreground="#4CAF50"/>
+            </Border>
+            <TextBlock Text="MODEL B" FontSize="11" FontWeight="SemiBold"
+                       CharacterSpacing="120" Foreground="#4CAF50" VerticalAlignment="Center"/>
+          </StackPanel>
+          <ComboBox x:Name="ModelBBox" HorizontalAlignment="Stretch"
+                    ItemsSource="{x:Bind ViewModel.AvailableModels}"
+                    DisplayMemberPath="Name" SelectedIndex="1"
+                    Background="#13131A" BorderBrush="#2A2A3A"
+                    PlaceholderText="Select model B..."/>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- Prompt + run -->
+    <Grid Grid.Row="2" ColumnSpacing="12">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+      <Border Grid.Column="0" Background="#1A1A24" BorderBrush="#2A2A3A"
+              BorderThickness="1" CornerRadius="12">
+        <TextBox Text="{x:Bind ViewModel.Prompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 PlaceholderText="Enter your prompt to compare both models..."
+                 AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="80"
+                 BorderThickness="0" Background="Transparent"
+                 Foreground="#DDDDEF" Padding="14,12"/>
+      </Border>
+      <Button Grid.Column="1" Command="{x:Bind ViewModel.RunCompareCommand}"
+              IsEnabled="{x:Bind ViewModel.IsRunning, Mode=OneWay, Converter={StaticResource InverseBoolConverter}}"
+              Width="50" Height="50" CornerRadius="12" BorderThickness="0"
+              ToolTipService.ToolTip="Run comparison">
+        <Button.Background>
+          <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#8A63FF" Offset="0"/>
+            <GradientStop Color="#4F9EFF" Offset="1"/>
+          </LinearGradientBrush>
+        </Button.Background>
+        <FontIcon Glyph="&#xE768;" FontSize="18" Foreground="White"/>
+      </Button>
+      <Button Grid.Column="2" Command="{x:Bind ViewModel.ClearAllCommand}"
+              Width="50" Height="50" CornerRadius="12"
+              Background="#1A1A24" BorderBrush="#2A2A3A"
+              ToolTipService.ToolTip="Clear">
+        <FontIcon Glyph="&#xE74D;" FontSize="16" Foreground="#FF6B6B"/>
+      </Button>
+    </Grid>
+
+    <!-- Results -->
+    <Grid Grid.Row="3" ColumnSpacing="16">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+
+      <Border Grid.Column="0" Background="#1A1A24" BorderBrush="#2A2A3A"
+              BorderThickness="1" CornerRadius="14" Padding="20">
+        <Grid RowSpacing="12">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10">
+            <Border Background="#22FFFFFF" CornerRadius="6" Padding="6">
+              <FontIcon Glyph="&#xE77B;" FontSize="12" Foreground="#8A63FF"/>
+            </Border>
+            <TextBlock Text="{x:Bind ViewModel.ModelA, Mode=OneWay}"
+                       FontWeight="SemiBold" FontSize="14" Foreground="#8A63FF"
+                       VerticalAlignment="Center"/>
+            <ProgressRing IsActive="{x:Bind ViewModel.IsRunning, Mode=OneWay}"
+                          Width="16" Height="16" Foreground="#8A63FF"/>
+          </StackPanel>
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <TextBlock Text="{x:Bind ViewModel.ResponseA, Mode=OneWay}"
+                       TextWrapping="Wrap" FontSize="14" Foreground="#DDDDEF"
+                       IsTextSelectionEnabled="True" LineHeight="22"/>
+          </ScrollViewer>
+          <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12">
+            <Border Background="#22FFFFFF" CornerRadius="6" Padding="8,4">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <FontIcon Glyph="&#xE916;" FontSize="11" Foreground="#555577"/>
+                <TextBlock FontSize="11" Foreground="#888899">
+                  <Run Text="{x:Bind ViewModel.MsA, Mode=OneWay, Converter={StaticResource MsToSecConverter}}"/>
+                </TextBlock>
+              </StackPanel>
+            </Border>
+            <Border Background="#22FFFFFF" CornerRadius="6" Padding="8,4">
+              <TextBlock FontSize="11" Foreground="#888899">
+                <Run Text="{x:Bind ViewModel.TokensA, Mode=OneWay}"/>
+                <Run Text=" tokens"/>
+              </TextBlock>
+            </Border>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <Border Grid.Column="1" Background="#1A1A24" BorderBrush="#2A2A3A"
+              BorderThickness="1" CornerRadius="14" Padding="20">
+        <Grid RowSpacing="12">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10">
+            <Border Background="#22FFFFFF" CornerRadius="6" Padding="6">
+              <FontIcon Glyph="&#xE77B;" FontSize="12" Foreground="#4CAF50"/>
+            </Border>
+            <TextBlock Text="{x:Bind ViewModel.ModelB, Mode=OneWay}"
+                       FontWeight="SemiBold" FontSize="14" Foreground="#4CAF50"
+                       VerticalAlignment="Center"/>
+            <ProgressRing IsActive="{x:Bind ViewModel.IsRunning, Mode=OneWay}"
+                          Width="16" Height="16" Foreground="#4CAF50"/>
+          </StackPanel>
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <TextBlock Text="{x:Bind ViewModel.ResponseB, Mode=OneWay}"
+                       TextWrapping="Wrap" FontSize="14" Foreground="#DDDDEF"
+                       IsTextSelectionEnabled="True" LineHeight="22"/>
+          </ScrollViewer>
+          <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12">
+            <Border Background="#22FFFFFF" CornerRadius="6" Padding="8,4">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <FontIcon Glyph="&#xE916;" FontSize="11" Foreground="#555577"/>
+                <TextBlock FontSize="11" Foreground="#888899">
+                  <Run Text="{x:Bind ViewModel.MsB, Mode=OneWay, Converter={StaticResource MsToSecConverter}}"/>
+                </TextBlock>
+              </StackPanel>
+            </Border>
+            <Border Background="#22FFFFFF" CornerRadius="6" Padding="8,4">
+              <TextBlock FontSize="11" Foreground="#888899">
+                <Run Text="{x:Bind ViewModel.TokensB, Mode=OneWay}"/>
+                <Run Text=" tokens"/>
+              </TextBlock>
+            </Border>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</Page>

@@ -1,0 +1,235 @@
+<Window
+    x:Class="OllamaHub.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="OllamaHub - Local AI Management"
+    Width="1400"
+    Height="900">
+    
+    <Grid Background="{StaticResource Surface0Brush}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- SIDEBAR NAVIGATION -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        
+        <Border Grid.Column="0" 
+                Background="{StaticResource Surface1Brush}"
+                BorderBrush="{StaticResource Border1Brush}"
+                BorderThickness="0,0,1,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <!-- App Header -->
+                <StackPanel Grid.Row="0" Padding="20,24,20,20">
+                    <TextBlock Text="🤖 OllamaHub" 
+                               FontSize="24" 
+                               FontWeight="Bold"
+                               Foreground="{StaticResource AccentBrush}"/>
+                    <TextBlock Text="Local AI Management" 
+                               FontSize="12" 
+                               Foreground="{StaticResource TextTertiaryBrush}"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+                
+                <!-- Navigation Menu -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Padding="12,8">
+                        
+                        <!-- Core Section -->
+                        <TextBlock Text="CORE" 
+                                   FontSize="11" 
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextTertiaryBrush}"
+                                   Margin="12,8,0,8"/>
+                        
+                        <Button x:Name="BtnChat" 
+                                Style="{StaticResource NavButtonStyle}"
+                                Tag="Chat"
+                                Click="NavBtn_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="💬" FontSize="16"/>
+                                <TextBlock Text="Chat" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button x:Name="BtnModels" 
+                                Style="{StaticResource NavButtonStyle}"
+                                Tag="Models"
+                                Click="NavBtn_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="🧠" FontSize="16"/>
+                                <TextBlock Text="Models" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button x:Name="BtnHistory" 
+                                Style="{StaticResource NavButtonStyle}"
+                                Tag="History"
+                                Click="NavBtn_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="📜" FontSize="16"/>
+                                <TextBlock Text="History" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button x:Name="BtnPrompts" 
+                                Style="{StaticResource NavButtonStyle}"
+                                Tag="Prompts"
+                                Click="NavBtn_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="📝" FontSize="16"/>
+                                <TextBlock Text="Prompt Library" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <!-- Tools Section -->
+                        <TextBlock Text="TOOLS" 
+                                   FontSize="11" 
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextTertiaryBrush}"
+                                   Margin="12,16,0,8"/>
+                        
+                        <Button x:Name="BtnCoPilot" 
+                                Style="{StaticResource NavButtonStyle}"
+                                Tag="CoPilot"
+                                Click="NavBtn_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="👨‍💻" FontSize="16"/>
+                                <TextBlock Text="CoPilot" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button x:Name="BtnSandbox" 
+                                Style="{StaticResource NavButtonStyle}"
+                                Tag="Sandbox"
+                                Click="NavBtn_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="🎨" FontSize="16"/>
+                                <TextBlock Text="Sandbox" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button x:Name="BtnBatch" 
+                                Style="{StaticResource NavButtonStyle}"
+                                Tag="Batch"
+                                Click="NavBtn_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="⚡" FontSize="16"/>
+                                <TextBlock Text="Batch Process" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button x:Name="BtnPersonas" 
+                                Style="{StaticResource NavButtonStyle}"
+                                Tag="Personas"
+                                Click="NavBtn_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="🎭" FontSize="16"/>
+                                <TextBlock Text="Personas" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button x:Name="BtnChain" 
+                                Style="{StaticResource NavButtonStyle}"
+                                Tag="Chain"
+                                Click="NavBtn_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="🔗" FontSize="16"/>
+                                <TextBlock Text="Chain Builder" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <!-- Advanced Section -->
+                        <TextBlock Text="ADVANCED" 
+                                   FontSize="11" 
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextTertiaryBrush}"
+                                   Margin="12,16,0,8"/>
+                        
+                        <Button x:Name="BtnCompare" 
+                                Style="{StaticResource NavButtonStyle}"
+                                Tag="Compare"
+                                Click="NavBtn_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="⚖️" FontSize="16"/>
+                                <TextBlock Text="Model Compare" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button x:Name="BtnTerminal" 
+                                Style="{StaticResource NavButtonStyle}"
+                                Tag="Terminal"
+                                Click="NavBtn_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="⌨️" FontSize="16"/>
+                                <TextBlock Text="Terminal" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button x:Name="BtnSettings" 
+                                Style="{StaticResource NavButtonStyle}"
+                                Tag="Settings"
+                                Click="NavBtn_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="⚙️" FontSize="16"/>
+                                <TextBlock Text="Settings" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button x:Name="BtnGuide" 
+                                Style="{StaticResource NavButtonStyle}"
+                                Tag="Guide"
+                                Click="NavBtn_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="📖" FontSize="16"/>
+                                <TextBlock Text="Guide" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                    </StackPanel>
+                </ScrollViewer>
+                
+                <!-- Status Footer -->
+                <Border Grid.Row="2" 
+                        Background="{StaticResource Surface2Brush}"
+                        BorderBrush="{StaticResource Border1Brush}"
+                        BorderThickness="0,1,0,0"
+                        Padding="16,12">
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Ellipse x:Name="StatusDot" 
+                                     Width="10" 
+                                     Height="10"
+                                     Fill="{StaticResource ErrorBrush}"
+                                     VerticalAlignment="Center"/>
+                            <TextBlock x:Name="StatusLabel" 
+                                       Text="Offline"
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Text="Ollama Status" 
+                                   FontSize="10"
+                                   Foreground="{StaticResource TextTertiaryBrush}"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+        
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- CONTENT AREA -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        
+        <Frame x:Name="ContentFrame" 
+               Grid.Column="1"
+               Background="{StaticResource Surface0Brush}"/>
+    </Grid>
+</Window>

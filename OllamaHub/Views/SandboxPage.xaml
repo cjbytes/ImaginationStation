@@ -1,0 +1,81 @@
+<Page
+    x:Class="OllamaHub.Views.SandboxPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <Grid Background="{StaticResource Surface0Brush}" Padding="32">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,24">
+            <TextBlock Text="🎨 Sandbox" Style="{StaticResource HeaderText}"/>
+            <TextBlock Text="Live preview for HTML, CSS, and JavaScript" 
+                       Style="{StaticResource BodyText}"
+                       Margin="0,8,0,0"/>
+        </StackPanel>
+        
+        <!-- Content -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- Code Editors -->
+            <Border Grid.Column="0" Style="{StaticResource CardStyle}" Margin="0,0,12,0">
+                <StackPanel Spacing="16">
+                    <TextBox Header="HTML" 
+                             x:Name="HtmlEditor"
+                             PlaceholderText="<!DOCTYPE html>..."
+                             TextWrapping="Wrap"
+                             AcceptsReturn="True"
+                             Height="180"
+                             FontFamily="Consolas"/>
+                    
+                    <TextBox Header="CSS" 
+                             x:Name="CssEditor"
+                             PlaceholderText="body { ... }"
+                             TextWrapping="Wrap"
+                             AcceptsReturn="True"
+                             Height="180"
+                             FontFamily="Consolas"/>
+                    
+                    <TextBox Header="JavaScript" 
+                             x:Name="JsEditor"
+                             PlaceholderText="console.log('Hello');"
+                             TextWrapping="Wrap"
+                             AcceptsReturn="True"
+                             Height="180"
+                             FontFamily="Consolas"/>
+                    
+                    <Button Content="▶️ Run Preview" 
+                            Style="{StaticResource AccentButtonStyle}"
+                            HorizontalAlignment="Stretch"
+                            Click="RunPreview_Click"/>
+                </StackPanel>
+            </Border>
+            
+            <!-- Preview Panel -->
+            <Border Grid.Column="1" Style="{StaticResource CardStyle}" Margin="12,0,0,0">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Live Preview" Style="{StaticResource TitleText}"/>
+                    
+                    <!-- WebView2 would go here in production -->
+                    <Border Background="{StaticResource Surface3Brush}"
+                            CornerRadius="8"
+                            Height="600"
+                            BorderBrush="{StaticResource Border2Brush}"
+                            BorderThickness="1">
+                        <TextBlock Text="Preview will render here when WebView2 is configured"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource TextTertiaryBrush}"/>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>

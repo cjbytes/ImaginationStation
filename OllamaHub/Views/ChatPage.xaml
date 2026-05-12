@@ -1,0 +1,286 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Page x:Class="OllamaHub.Views.ChatPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:models="using:OllamaHub.Models"
+      Background="#0F0F13">
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="260"/>
+      <ColumnDefinition Width="*"/>
+    </Grid.ColumnDefinitions>
+
+    <!-- LEFT SIDEBAR -->
+    <Border Grid.Column="0" Background="#13131A"
+            BorderBrush="#1E1E2E" BorderThickness="0,0,1,0">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Model selector -->
+        <StackPanel Grid.Row="0" Margin="14,16,14,10" Spacing="6">
+          <TextBlock Text="MODEL" FontSize="10" FontWeight="SemiBold"
+                     CharacterSpacing="120" Foreground="#666688"/>
+          <ComboBox x:Name="ModelComboBox"
+                    ItemsSource="{x:Bind ViewModel.AvailableModels}"
+                    DisplayMemberPath="Name"
+                    SelectedIndex="0"
+                    HorizontalAlignment="Stretch"
+                    Background="#1A1A24"
+                    BorderBrush="#2A2A3A"
+                    PlaceholderText="Select model..."/>
+        </StackPanel>
+
+        <!-- New Chat -->
+        <Button Grid.Row="1" Click="NewChat_Click"
+                HorizontalAlignment="Stretch" Margin="14,0,14,10"
+                CornerRadius="10" Height="38">
+          <Button.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+              <GradientStop Color="#8A63FF" Offset="0"/>
+              <GradientStop Color="#4F9EFF" Offset="1"/>
+            </LinearGradientBrush>
+          </Button.Background>
+          <Button.BorderBrush><SolidColorBrush Color="Transparent"/></Button.BorderBrush>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <FontIcon Glyph="&#xE710;" FontSize="13" Foreground="White"/>
+            <TextBlock Text="New Chat" Foreground="White" FontWeight="SemiBold" FontSize="13"/>
+          </StackPanel>
+        </Button>
+
+        <!-- Recent chats label -->
+        <TextBlock Grid.Row="2" Text="RECENT CHATS" FontSize="10" FontWeight="SemiBold"
+                   CharacterSpacing="120" Foreground="#666688" Margin="18,4,14,6"/>
+
+        <!-- Session list -->
+        <ListView Grid.Row="3" x:Name="SessionList"
+                  ItemsSource="{x:Bind ViewModel.ChatSessions}"
+                  SelectionChanged="SessionList_SelectionChanged"
+                  Background="Transparent" Margin="6,0,6,8">
+          <ListView.ItemTemplate>
+            <DataTemplate x:DataType="models:ChatSession">
+              <Border Padding="10,8" CornerRadius="8">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="{x:Bind Title}" FontSize="13" FontWeight="SemiBold"
+                             Foreground="#DDDDEE" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Text="{x:Bind ModelName}" FontSize="11"
+                             Foreground="#666688" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ListView.ItemTemplate>
+          <ListView.ItemContainerStyle>
+            <Style TargetType="ListViewItem">
+              <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+              <Setter Property="CornerRadius" Value="8"/>
+              <Setter Property="Margin" Value="0,1"/>
+              <Setter Property="Padding" Value="0"/>
+            </Style>
+          </ListView.ItemContainerStyle>
+        </ListView>
+      </Grid>
+    </Border>
+
+    <!-- RIGHT: CHAT AREA -->
+    <Grid Grid.Column="1">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
+
+      <!-- Top bar -->
+      <Border Grid.Row="0" Background="#13131A"
+              BorderBrush="#1E1E2E" BorderThickness="0,0,0,1" Padding="20,10">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+            <Border Background="#1E1E2E" CornerRadius="6" Padding="8,4">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <FontIcon Glyph="&#xE8EF;" FontSize="11" Foreground="#8A63FF"/>
+                <TextBlock x:Name="TokenCountLabel" Text="0 tokens" FontSize="12"
+                           Foreground="#888899" VerticalAlignment="Center"/>
+              </StackPanel>
+            </Border>
+            <TextBlock x:Name="StatusText"
+                       Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                       FontSize="12" Foreground="#555577" VerticalAlignment="Center"/>
+          </StackPanel>
+          <DropDownButton Grid.Column="1" CornerRadius="8" Background="#1E1E2E"
+                          BorderBrush="#2A2A3A" Foreground="#AAAACC" FontSize="12">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <FontIcon Glyph="&#xE8A5;" FontSize="12" Foreground="#8A63FF"/>
+              <TextBlock Text="Export"/>
+            </StackPanel>
+            <DropDownButton.Flyout>
+              <MenuFlyout>
+                <MenuFlyoutItem Text="Export as Markdown" Click="ExportMd_Click">
+                  <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8A5;"/></MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Export as HTML" Click="ExportHtml_Click">
+                  <MenuFlyoutItem.Icon><FontIcon Glyph="&#xF6FA;"/></MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Export as Text" Click="ExportTxt_Click">
+                  <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8A4;"/></MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+              </MenuFlyout>
+            </DropDownButton.Flyout>
+          </DropDownButton>
+        </Grid>
+      </Border>
+
+      <!-- Messages -->
+      <ScrollViewer Grid.Row="1" x:Name="MessagesScroll"
+                    VerticalScrollBarVisibility="Auto" Padding="28,20,28,12">
+        <StackPanel Spacing="20">
+
+          <!-- Empty state -->
+          <StackPanel x:Name="EmptyState" HorizontalAlignment="Center"
+                      Margin="0,80,0,0" Spacing="16">
+            <Border Width="80" Height="80" CornerRadius="24"
+                    HorizontalAlignment="Center">
+              <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                  <GradientStop Color="#8A63FF" Offset="0"/>
+                  <GradientStop Color="#4F9EFF" Offset="1"/>
+                </LinearGradientBrush>
+              </Border.Background>
+              <FontIcon Glyph="&#xE99A;" FontSize="36" Foreground="White"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <TextBlock Text="OllamaHub" FontSize="32" FontWeight="Bold"
+                       Foreground="#EEEEFF" HorizontalAlignment="Center"/>
+            <TextBlock Text="Select a model and start a conversation"
+                       FontSize="14" Foreground="#555577" HorizontalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center"
+                        Margin="0,8,0,0">
+              <Border Background="#1A1A24" BorderBrush="#2A2A3A" BorderThickness="1"
+                      CornerRadius="8" Padding="12,8">
+                <StackPanel Spacing="4">
+                  <FontIcon Glyph="&#xE945;" FontSize="16" Foreground="#8A63FF"
+                            HorizontalAlignment="Center"/>
+                  <TextBlock Text="Fast local AI" FontSize="11" Foreground="#888899"
+                             HorizontalAlignment="Center"/>
+                </StackPanel>
+              </Border>
+              <Border Background="#1A1A24" BorderBrush="#2A2A3A" BorderThickness="1"
+                      CornerRadius="8" Padding="12,8">
+                <StackPanel Spacing="4">
+                  <FontIcon Glyph="&#xE8BD;" FontSize="16" Foreground="#4F9EFF"
+                            HorizontalAlignment="Center"/>
+                  <TextBlock Text="Chat history" FontSize="11" Foreground="#888899"
+                             HorizontalAlignment="Center"/>
+                </StackPanel>
+              </Border>
+              <Border Background="#1A1A24" BorderBrush="#2A2A3A" BorderThickness="1"
+                      CornerRadius="8" Padding="12,8">
+                <StackPanel Spacing="4">
+                  <FontIcon Glyph="&#xE8EF;" FontSize="16" Foreground="#2DD4BF"
+                            HorizontalAlignment="Center"/>
+                  <TextBlock Text="Compare models" FontSize="11" Foreground="#888899"
+                             HorizontalAlignment="Center"/>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Messages list -->
+          <ItemsControl x:Name="MessagesList"
+                        ItemsSource="{x:Bind ViewModel.Messages, Mode=OneWay}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="models:ChatMessage">
+                <Grid Margin="0,6">
+
+                  <!-- USER bubble -->
+                  <Border Visibility="{x:Bind IsUser, Converter={StaticResource BoolToVisibilityConverter}}"
+                          HorizontalAlignment="Right" MaxWidth="620"
+                          CornerRadius="18,18,4,18" Padding="16,12" Margin="100,0,0,0">
+                    <Border.Background>
+                      <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#6B46FF" Offset="0"/>
+                        <GradientStop Color="#4F9EFF" Offset="1"/>
+                      </LinearGradientBrush>
+                    </Border.Background>
+                    <TextBlock Text="{x:Bind Content}" Foreground="White"
+                               TextWrapping="Wrap" FontSize="14"
+                               IsTextSelectionEnabled="True" LineHeight="22"/>
+                  </Border>
+
+                  <!-- ASSISTANT bubble -->
+                  <Border Visibility="{x:Bind IsAssistant, Converter={StaticResource BoolToVisibilityConverter}}"
+                          HorizontalAlignment="Left" MaxWidth="720"
+                          Background="#1A1A24" BorderBrush="#2A2A3A" BorderThickness="1"
+                          CornerRadius="18,18,18,4" Padding="18,14" Margin="0,0,100,0">
+                    <StackPanel Spacing="10">
+                      <!-- Model name badge -->
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Background="#22FFFFFF" CornerRadius="6" Padding="6,3">
+                          <StackPanel Orientation="Horizontal" Spacing="5">
+                            <FontIcon Glyph="&#xE99A;" FontSize="10" Foreground="#8A63FF"/>
+                            <TextBlock Text="{x:Bind ModelName}" FontSize="11"
+                                       FontWeight="SemiBold" Foreground="#8A63FF"/>
+                          </StackPanel>
+                        </Border>
+                      </StackPanel>
+                      <TextBlock Text="{x:Bind Content}" TextWrapping="Wrap"
+                                 FontSize="14" Foreground="#DDDDEF"
+                                 IsTextSelectionEnabled="True" LineHeight="22"/>
+                      <ProgressRing IsActive="{x:Bind IsStreaming}" Width="18" Height="18"
+                                    Foreground="#8A63FF"
+                                    Visibility="{x:Bind IsStreaming, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    </StackPanel>
+                  </Border>
+
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Input area -->
+      <Border Grid.Row="2" Background="#13131A"
+              BorderBrush="#1E1E2E" BorderThickness="0,1,0,0"
+              Padding="20,14,20,20">
+        <Grid ColumnSpacing="12">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+
+          <Border Grid.Column="0" Background="#1A1A24"
+                  BorderBrush="#2A2A3A" BorderThickness="1" CornerRadius="14">
+            <TextBox x:Name="InputBox"
+                     Text="{x:Bind ViewModel.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     PlaceholderText="Message OllamaHub...  (Enter to send)"
+                     AcceptsReturn="False" MaxHeight="120" TextWrapping="Wrap"
+                     BorderThickness="0" Background="Transparent"
+                     Foreground="#DDDDEF"
+                     Padding="16,13" FontSize="14"
+                     KeyDown="InputBox_KeyDown" VerticalAlignment="Center"/>
+          </Border>
+
+          <Button Grid.Column="1" x:Name="SendButton" Click="SendButton_Click"
+                  Width="50" Height="50" CornerRadius="14"
+                  BorderThickness="0"
+                  ToolTipService.ToolTip="Send (Enter) / Stop">
+            <Button.Background>
+              <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#8A63FF" Offset="0"/>
+                <GradientStop Color="#4F9EFF" Offset="1"/>
+              </LinearGradientBrush>
+            </Button.Background>
+            <FontIcon x:Name="SendIcon" Glyph="&#xE724;" FontSize="18" Foreground="White"/>
+          </Button>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</Page>
